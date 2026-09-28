@@ -2190,6 +2190,23 @@ onClick={() => {
   onClick={() => {
     setCreationEvenement(false)
     setAccueil(true)
+
+    if (evenementsActifs.length > 0) {
+      const evenementActif =
+        evenementsActifs.find(
+          (item) =>
+            String(item.id) ===
+            String(evenementSelectionneId)
+        ) || evenementsActifs[0]
+
+      setEvenement(evenementActif)
+      setEvenementSelectionneId(evenementActif.id)
+
+      localStorage.setItem(
+        'evenementSelectionneId',
+        evenementActif.id
+      )
+    }
   }}
 >
   ▶️ Reprendre un événement
