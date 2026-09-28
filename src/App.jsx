@@ -1865,12 +1865,13 @@ return (
           />
 
           <input
-            type="date"
-            value={dateRechercheHistorique}
-            onChange={(e) =>
-              setDateRechercheHistorique(e.target.value)
-            }
-          />
+  className="champ-date-historique"
+  type="date"
+  value={dateRechercheHistorique}
+  onChange={(e) =>
+    setDateRechercheHistorique(e.target.value)
+  }
+/>
 
         </div>
 
@@ -2130,12 +2131,13 @@ onClick={() => {
             </label>
 
             <input
-              type="date"
-              value={dateEvenement}
-              onChange={(e) =>
-                setDateEvenement(e.target.value)
-              }
-            />
+  className="champ-date-evenement"
+  type="date"
+  value={dateEvenement}
+  onChange={(e) =>
+    setDateEvenement(e.target.value)
+  }
+/>
 
             <label>
               Tarification

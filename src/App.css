@@ -353,3 +353,15 @@
     transform: translateX(400%);
   }
 }
+.champ-date-evenement {
+  width: 100%;
+  max-width: 276px;
+  box-sizing: border-box;
+  font-size: 16px;
+}
+.champ-date-historique {
+  width: 100%;
+  max-width: 304px;
+  box-sizing: border-box;
+  font-size: 16px;
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Get Your Crêpes",
+  "short_name": "Get Your Crêpes",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8E8C8",
+  "theme_color": "#F8E8C8",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
