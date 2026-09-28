@@ -20,6 +20,7 @@ useEffect(() => {
     } = await supabase.auth.getSession()
 
     setSession(session)
+    setChargementSession(false)
   }
 
   chargerSession()
@@ -37,17 +38,16 @@ useEffect(() => {
   }
 }, [])
 useEffect(() => {
-  if (!session) {
-    return
-  }
-
   const chargerEvenements = async () => {
     const { data, error } = await supabase
       .from('evenements')
       .select('*')
       .eq('statut', 'En cours')
       .order('date', { ascending: false })
-
+console.log('RÉSULTAT CHARGEMENT ÉVÉNEMENTS :', {
+  data,
+  error,
+})
     if (error) {
       console.error(
         'Erreur lors du chargement des événements :',
@@ -58,6 +58,10 @@ useEffect(() => {
     }
 
     setEvenementsActifs(data || [])
+    if (!data || data.length === 0) {
+  setAccueil(true)
+  setCreationEvenement(true)
+}
 
     if (data && data.length > 0) {
       const evenementSauvegarde = data.find(
@@ -67,14 +71,26 @@ useEffect(() => {
       )
 
       if (evenementSauvegarde) {
-        setEvenement(evenementSauvegarde)
-        setAccueil(false)
-        setCreationEvenement(false)
-      } else {
-        setEvenement(data[0])
-        setAccueil(false)
-        setCreationEvenement(false)
-      }
+  setEvenement(evenementSauvegarde)
+} else {
+  setEvenement(data[0])
+}
+
+const pageSauvegardee =
+  localStorage.getItem('pageActuelle')
+
+if (
+  pageSauvegardee === 'evenements-en-cours' ||
+  pageSauvegardee === 'nouvel-evenement'
+) {
+  setAccueil(true)
+  setCreationEvenement(
+    pageSauvegardee === 'nouvel-evenement'
+  )
+} else {
+  setAccueil(false)
+  setCreationEvenement(false)
+}
 
       console.log(
         'Événements chargés depuis Supabase :',
@@ -86,22 +102,8 @@ useEffect(() => {
   }
 
   chargerEvenements()
-}, [session])
-useEffect(() => {
-  console.log('ÉTAT ÉCRAN :', {
-    session: !!session,
-    accueil,
-    evenement,
-    chargementEvenements,
-    creationEvenement,
-  })
-}, [
-  session,
-  accueil,
-  evenement,
-  chargementEvenements,
-  creationEvenement,
-])
+}, [])
+
 useEffect(() => {
   const chargerHistorique = async () => {
     const { data: evenements, error } = await supabase
@@ -626,6 +628,7 @@ const [historiqueEvenements, setHistoriqueEvenements] =
 const [evenement, setEvenement] = useState(null)
 const [chargementEvenements, setChargementEvenements] = useState(true)
 const [session, setSession] = useState(null)
+const [chargementSession, setChargementSession] = useState(true)
 const [emailConnexion, setEmailConnexion] = useState('')
 const [motDePasseConnexion, setMotDePasseConnexion] =
   useState('')
@@ -664,11 +667,56 @@ const [dateEvenement, setDateEvenement] = useState(
 )
 const [templateEvenement, setTemplateEvenement] =
   useState('evenement')
-const [admin, setAdmin] = useState(false)
-const [cuisine, setCuisine] = useState(false)
-const [historique, setHistorique] = useState(false)
-const [accueil, setAccueil] = useState(true)
-const [historiqueCommandesActif, setHistoriqueCommandesActif] = useState(false)
+const pageSauvegardee =
+  localStorage.getItem('pageActuelle') || 'evenements-en-cours'
+const [admin, setAdmin] = useState(
+  pageSauvegardee === 'admin'
+)
+
+const [cuisine, setCuisine] = useState(
+  pageSauvegardee === 'cuisine'
+)
+
+const [historique, setHistorique] = useState(
+  pageSauvegardee === 'historique'
+)
+
+const [accueil, setAccueil] = useState(
+  pageSauvegardee === 'historique' ||
+  pageSauvegardee === 'nouvel-evenement' ||
+  pageSauvegardee === 'evenements-en-cours'
+)
+
+const [historiqueCommandesActif, setHistoriqueCommandesActif] =
+  useState(
+    pageSauvegardee === 'commandes'
+  )
+  useEffect(() => {
+  let page = 'caisse'
+
+  if (admin) {
+    page = 'admin'
+  } else if (cuisine) {
+    page = 'cuisine'
+  } else if (historique) {
+    page = 'historique'
+  } else if (historiqueCommandesActif) {
+    page = 'commandes'
+  } else if (accueil && creationEvenement) {
+    page = 'nouvel-evenement'
+  } else if (accueil) {
+    page = 'evenements-en-cours'
+  }
+
+  localStorage.setItem('pageActuelle', page)
+}, [
+  admin,
+  cuisine,
+  historique,
+  historiqueCommandesActif,
+  accueil,
+  creationEvenement,
+])
 const [paiement, setPaiement] = useState(false)
 const [modePaiement, setModePaiement] = useState('')
 const [montantRecu, setMontantRecu] = useState('')
@@ -1469,7 +1517,16 @@ const produitsVendusHistorique =
     )
 return (
   <div className="app">
-    {!session ? (
+  {chargementSession ? (
+  <div className="ecran-chargement">
+    <div className="chargement-crepe">🥞</div>
+    <h2>Get Your Crêpes</h2>
+    <p>Chargement...</p>
+    <div className="barre-chargement">
+      <div className="barre-chargement-progress"></div>
+    </div>
+  </div>
+) : !session ? (
       <div className="ecran-connexion">
         <div className="carte-connexion">
           <h1>🥞 Get Your Crêpes</h1>
@@ -1516,9 +1573,14 @@ return (
 ) : (
   <>
     {chargementEvenements ? (
-      <div className="carte-evenement">
-        <h2>Chargement...</h2>
-      </div>
+      <div className="ecran-chargement">
+  <div className="chargement-crepe">🥞</div>
+  <h2>Get Your Crêpes</h2>
+  <p>Chargement...</p>
+  <div className="barre-chargement">
+    <div className="barre-chargement-progress"></div>
+  </div>
+</div>
     ) : historique ? (
   <div className="historique-evenements">
 
