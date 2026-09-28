@@ -12,6 +12,7 @@ import { supabase } from './supabase'
 
 
 function App() {
+  console.log('APP.jsx CHARGÉ')
 useEffect(() => {
   const chargerSession = async () => {
     const {
@@ -36,47 +37,71 @@ useEffect(() => {
   }
 }, [])
 useEffect(() => {
+  if (!session) {
+    return
+  }
+
   const chargerEvenements = async () => {
     const { data, error } = await supabase
-  .from('evenements')
-  .select('*')
-  .eq('statut', 'En cours')
-  .order('date', { ascending: false })
+      .from('evenements')
+      .select('*')
+      .eq('statut', 'En cours')
+      .order('date', { ascending: false })
 
     if (error) {
       console.error(
         'Erreur lors du chargement des événements :',
         error
       )
+      setChargementEvenements(false)
       return
     }
 
-setEvenementsActifs(data || [])
+    setEvenementsActifs(data || [])
 
-if (data && data.length > 0) {
-  const evenementSauvegarde = data.find(
-    (evenementActif) =>
-      String(evenementActif.id) ===
-      String(evenementSelectionneId)
-  )
+    if (data && data.length > 0) {
+      const evenementSauvegarde = data.find(
+        (evenementActif) =>
+          String(evenementActif.id) ===
+          String(evenementSelectionneId)
+      )
 
-  if (evenementSauvegarde) {
-    setEvenement(evenementSauvegarde)
-  } else {
-    setEvenement(data[0])
-  }
-}
+      if (evenementSauvegarde) {
+        setEvenement(evenementSauvegarde)
+        setAccueil(false)
+        setCreationEvenement(false)
+      } else {
+        setEvenement(data[0])
+        setAccueil(false)
+        setCreationEvenement(false)
+      }
 
-console.log(
-  'Événements chargés depuis Supabase :',
-  data
-)
+      console.log(
+        'Événements chargés depuis Supabase :',
+        data
+      )
+    }
+
+    setChargementEvenements(false)
   }
 
   chargerEvenements()
-  
-}, [])
-
+}, [session])
+useEffect(() => {
+  console.log('ÉTAT ÉCRAN :', {
+    session: !!session,
+    accueil,
+    evenement,
+    chargementEvenements,
+    creationEvenement,
+  })
+}, [
+  session,
+  accueil,
+  evenement,
+  chargementEvenements,
+  creationEvenement,
+])
 useEffect(() => {
   const chargerHistorique = async () => {
     const { data: evenements, error } = await supabase
@@ -599,6 +624,7 @@ const [commandes, setCommandes] = useState([])
 const [historiqueEvenements, setHistoriqueEvenements] =
   useState([])
 const [evenement, setEvenement] = useState(null)
+const [chargementEvenements, setChargementEvenements] = useState(true)
 const [session, setSession] = useState(null)
 const [emailConnexion, setEmailConnexion] = useState('')
 const [motDePasseConnexion, setMotDePasseConnexion] =
@@ -864,6 +890,10 @@ if (error) {
   ])
 
   setEvenement(nouvelEvenement)
+  localStorage.setItem(
+  'evenementSelectionneId',
+  nouvelEvenement.id
+)
 
   setAccueil(false)
 
@@ -1483,9 +1513,13 @@ return (
           </form>
         </div>
       </div>
-    ) : (
-      <>
-        {historique ? (
+) : (
+  <>
+    {chargementEvenements ? (
+      <div className="carte-evenement">
+        <h2>Chargement...</h2>
+      </div>
+    ) : historique ? (
   <div className="historique-evenements">
 
     {evenementSelectionne ? (
@@ -1923,9 +1957,9 @@ if (erreurEvenement) {
 ) : accueil ? (
   <div className="accueil-evenement">
 
-    <h1>🥞 Get Your Crêpes </h1>
+<h1>🥞 Get Your Crêpes </h1>
 
-    {evenement && !creationEvenement ? (
+{evenement && !creationEvenement ? (
       <>
  <div className="carte-evenement">
   <h2>🎪 Événements en cours</h2>
@@ -1946,6 +1980,10 @@ if (erreurEvenement) {
           onClick={() => {
             setEvenement(evenementActif)
             setEvenementSelectionneId(evenementActif.id)
+            localStorage.setItem(
+  'evenementSelectionneId',
+  evenementActif.id
+)
             setAccueil(false)
             setCreationEvenement(false)
             setHistorique(false)
