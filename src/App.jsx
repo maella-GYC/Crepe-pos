@@ -37,72 +37,6 @@ useEffect(() => {
     subscription.unsubscribe()
   }
 }, [])
-useEffect(() => {
-  const chargerEvenements = async () => {
-    const { data, error } = await supabase
-      .from('evenements')
-      .select('*')
-      .eq('statut', 'En cours')
-      .order('date', { ascending: false })
-console.log('RÉSULTAT CHARGEMENT ÉVÉNEMENTS :', {
-  data,
-  error,
-})
-    if (error) {
-      console.error(
-        'Erreur lors du chargement des événements :',
-        error
-      )
-      setChargementEvenements(false)
-      return
-    }
-
-    setEvenementsActifs(data || [])
-    if (!data || data.length === 0) {
-  setAccueil(true)
-  setCreationEvenement(true)
-}
-
-    if (data && data.length > 0) {
-      const evenementSauvegarde = data.find(
-        (evenementActif) =>
-          String(evenementActif.id) ===
-          String(evenementSelectionneId)
-      )
-
-      if (evenementSauvegarde) {
-  setEvenement(evenementSauvegarde)
-} else {
-  setEvenement(data[0])
-}
-
-const pageSauvegardee =
-  localStorage.getItem('pageActuelle')
-
-if (
-  pageSauvegardee === 'evenements-en-cours' ||
-  pageSauvegardee === 'nouvel-evenement'
-) {
-  setAccueil(true)
-  setCreationEvenement(
-    pageSauvegardee === 'nouvel-evenement'
-  )
-} else {
-  setAccueil(false)
-  setCreationEvenement(false)
-}
-
-      console.log(
-        'Événements chargés depuis Supabase :',
-        data
-      )
-    }
-
-    setChargementEvenements(false)
-  }
-
-  chargerEvenements()
-}, [])
 
 useEffect(() => {
   const chargerHistorique = async () => {
@@ -628,10 +562,81 @@ const [historiqueEvenements, setHistoriqueEvenements] =
 const [evenement, setEvenement] = useState(null)
 const [chargementEvenements, setChargementEvenements] = useState(true)
 const [session, setSession] = useState(null)
+
 const [chargementSession, setChargementSession] = useState(true)
 const [emailConnexion, setEmailConnexion] = useState('')
 const [motDePasseConnexion, setMotDePasseConnexion] =
   useState('')
+  useEffect(() => {
+  if (!session) {
+    return
+  }
+
+  const chargerEvenements = async () => {
+    const { data, error } = await supabase
+      .from('evenements')
+      .select('*')
+      .eq('statut', 'En cours')
+      .order('date', { ascending: false })
+console.log('RÉSULTAT CHARGEMENT ÉVÉNEMENTS :', {
+  data,
+  error,
+})
+    if (error) {
+      console.error(
+        'Erreur lors du chargement des événements :',
+        error
+      )
+      setChargementEvenements(false)
+      return
+    }
+
+    setEvenementsActifs(data || [])
+    if (!data || data.length === 0) {
+  setAccueil(true)
+  setCreationEvenement(true)
+}
+
+    if (data && data.length > 0) {
+      const evenementSauvegarde = data.find(
+        (evenementActif) =>
+          String(evenementActif.id) ===
+          String(evenementSelectionneId)
+      )
+
+      if (evenementSauvegarde) {
+  setEvenement(evenementSauvegarde)
+} else {
+  setEvenement(data[0])
+}
+
+const pageSauvegardee =
+  localStorage.getItem('pageActuelle')
+
+if (
+  pageSauvegardee === 'evenements-en-cours' ||
+  pageSauvegardee === 'nouvel-evenement'
+) {
+  setAccueil(true)
+  setCreationEvenement(
+    pageSauvegardee === 'nouvel-evenement'
+  )
+} else {
+  setAccueil(false)
+  setCreationEvenement(false)
+}
+
+      console.log(
+        'Événements chargés depuis Supabase :',
+        data
+      )
+    }
+
+    setChargementEvenements(false)
+  }
+
+  chargerEvenements()
+}, [session])
 const [connexionEnCours, setConnexionEnCours] =
   useState(false)
 const [erreurConnexion, setErreurConnexion] =
