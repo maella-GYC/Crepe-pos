@@ -78,6 +78,8 @@ const terminerAppui = () => {
   }
 
   setAppuiEnCours(null)
+  setProduitEnDeplacement(null)
+  setCibleDeplacement(null)
 }
 const [cibleDeplacement, setCibleDeplacement] =
   useState(null)
