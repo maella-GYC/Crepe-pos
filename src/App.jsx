@@ -135,8 +135,10 @@ useEffect(() => {
     )
   }
 
-chargerHistorique()
-}, [])
+if (session) {
+  chargerHistorique()
+}
+}, [session])
 useEffect(() => {
   const canalEvenements = supabase
     .channel('evenements-en-temps-reel-v2')
