@@ -129,8 +129,10 @@ useEffect(() => {
     )
   }
 
-  chargerHistorique()
-}, [])
+  if (session) {
+    chargerHistorique()
+  }
+}, [session])
 useEffect(() => {
   const canalEvenements = supabase
     .channel('evenements-en-temps-reel-v2')
@@ -371,8 +373,10 @@ setCommandes(commandesSupabase)
     )
   }
 
-  chargerCommandes()
-}, [])
+  if (session) {
+    chargerCommandes()
+  }
+}, [session])
 
 useEffect(() => {
   const canalCommandes = supabase
@@ -487,8 +491,11 @@ useEffect(() => {
     )
   }
 
-  chargerSupplements()
-}, [])
+  if (session) {
+    chargerSupplements()
+  }
+}, [session])
+
 useEffect(() => {
   const canalSupplements = supabase
     .channel('supplements-en-temps-reel')
