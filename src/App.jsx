@@ -809,8 +809,10 @@ useEffect(() => {
     )
   }
 
-  chargerProduits()
-}, [])
+  if (session) {
+    chargerProduits()
+  }
+}, [session])
 useEffect(() => {
   const canalProduits = supabase
     .channel('produits-en-temps-reel')
