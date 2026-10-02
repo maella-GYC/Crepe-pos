@@ -46,6 +46,12 @@ const couleursCrepes = [
 ]
 function App() {
   console.log('APP.jsx CHARGÉ')
+
+const [session, setSession] = useState(null)
+const [chargementSession, setChargementSession] = useState(true)
+const [emailConnexion, setEmailConnexion] = useState('')
+const [motDePasseConnexion, setMotDePasseConnexion] = useState('')
+
 useEffect(() => {
   const chargerSession = async () => {
     const {
@@ -129,10 +135,8 @@ useEffect(() => {
     )
   }
 
-  if (session) {
-    chargerHistorique()
-  }
-}, [session])
+chargerHistorique()
+}, [])
 useEffect(() => {
   const canalEvenements = supabase
     .channel('evenements-en-temps-reel-v2')
@@ -601,12 +605,7 @@ const [historiqueEvenements, setHistoriqueEvenements] =
   useState([])
 const [evenement, setEvenement] = useState(null)
 const [chargementEvenements, setChargementEvenements] = useState(true)
-const [session, setSession] = useState(null)
 
-const [chargementSession, setChargementSession] = useState(true)
-const [emailConnexion, setEmailConnexion] = useState('')
-const [motDePasseConnexion, setMotDePasseConnexion] =
-  useState('')
   useEffect(() => {
   if (!session) {
     return
