@@ -798,7 +798,7 @@ justify-content: center;
 }
 
 .admin-produit strong {
-  font-size: 19px;
+  font-size: 18px;
 }
 
 .admin-produit span {
@@ -2046,7 +2046,7 @@ justify-content: center;
   border-radius: 16px;
   background: #f7f7f7;
   color: #444;
-  font-size: 19px;
+  font-size: 18px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -2078,7 +2078,7 @@ justify-content: center;
   border-radius: 16px;
   background: #f7f7f7;
   color: #444;
-  font-size: 19px;
+  font-size: 18px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -2218,4 +2218,88 @@ justify-content: center;
 .produit-vege {
   background: #dcefdc;
   border-radius: 8px;
+}
+.admin-produit.mode-reorganisation {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.produit-en-deplacement {
+  opacity: 0.6;
+  transform: scale(1.03);
+  cursor: grabbing;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.cible-deplacement {
+  outline: 3px dashed #333;
+  transform: scale(1.02);
+}
+.bouton-reorganisation {
+  width: 100%;
+  padding: 13px 18px;
+  margin: 14px 0;
+  border: 1px solid #d8d8d8;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f4f4 100%);
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.2s ease;
+}
+
+.bouton-reorganisation:active {
+  transform: scale(0.97);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.bouton-reorganisation:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #eeeeee 100%);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.11);
+}
+@media (max-width: 768px) {
+  .ajouter-ingredient button {
+    background: #f4f4f4;
+    color: #333;
+    border: 1px solid #d8d8d8;
+    border-radius: 12px;
+    font-weight: 600;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+  }
+
+  .ajouter-ingredient button:active {
+    transform: scale(0.97);
+  }
+}
+.bouton-ajouter-produit {
+  background: #f4f4f4;
+  color: #333;
+  border: 1px solid #d8d8d8;
+  border-radius: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+.bouton-ajouter-produit:active {
+  transform: scale(0.97);
+}
+.bouton-ajouter-supplement {
+  background: #f4f4f4;
+  color: #333;
+  border: 1px solid #d8d8d8;
+  border-radius: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+.bouton-ajouter-supplement:active {
+  transform: scale(0.97);
 }

@@ -1,10 +1,20 @@
 import { useState } from 'react'
-
+const couleursCrepes = [
+  { nom: 'Rose pastel', valeur: '#FDE9E0' },
+  { nom: 'Marron clair', valeur: '#d0863bc5' },
+  { nom: 'Marron foncé', valeur: '#8B5A3C' },
+  { nom: 'Jaune pastel', valeur: '#FBF2B7' },
+  { nom: 'Orange pastel', valeur: '#ff7b00b0' },
+  { nom: 'Blanc', valeur: '#FFFFFF' },
+  { nom: 'Noir', valeur: '#2d2d2d' },
+  { nom: 'Marron orange', valeur: '#a3612f' },
+]
 function Admin({
   produits,
   ajouterProduit,
   modifierProduit,
   supprimerProduit,
+  reordonnerProduits,
   supplements,
   ajouterSupplement,
   modifierSupplement,
@@ -18,6 +28,8 @@ const [prixEvenement, setPrixEvenement] = useState('')
   const [typeRecette, setTypeRecette] = useState('vege')
   const [tarifActif, setTarifActif] =
   useState('marche')
+  const [couleurProduit, setCouleurProduit] =
+  useState('#F6D6DC')
   const [ingredients, setIngredients] = useState([])
 
   const [nomIngredient, setNomIngredient] = useState('')
@@ -39,11 +51,154 @@ const [prixEvenement, setPrixEvenement] = useState('')
   categorieSupplementActive,
   setCategorieSupplementActive,
 ] = useState('Sweet')
+const [modeReorganisation, setModeReorganisation] =
+  useState(false)
+  const [produitEnDeplacement, setProduitEnDeplacement] =
+  useState(null)
+  const [appuiEnCours, setAppuiEnCours] = useState(null)
+const commencerAppui = (produit, e) => {
+  if (!modeReorganisation) return
 
+  setProduitEnDeplacement(produit)
+
+  setPositionDepart({
+    x: e.clientX,
+    y: e.clientY,
+  })
+
+  setPositionDoigt({
+    x: e.clientX,
+    y: e.clientY,
+  })
+}
+
+const terminerAppui = () => {
+  if (appuiEnCours) {
+    clearTimeout(appuiEnCours)
+  }
+
+  setAppuiEnCours(null)
+}
+const [cibleDeplacement, setCibleDeplacement] =
+  useState(null)
+const [positionDoigt, setPositionDoigt] = useState({
+  x: 0,
+  y: 0,
+})
+
+const [positionDepart, setPositionDepart] = useState({
+  x: 0,
+  y: 0,
+})
+const deplacerAvecLeDoigt = (e) => {
+  if (!produitEnDeplacement) return
+
+  setPositionDoigt({
+    x: e.clientX,
+    y: e.clientY,
+  })
+
+  const cartes = document.querySelectorAll(
+    '.admin-produit'
+  )
+
+  let carteCible = null
+
+cartes.forEach((carte) => {
+  const idCarte = Number(carte.dataset.id)
+
+  // On ignore la carte que l'on est en train de déplacer
+  if (idCarte === produitEnDeplacement.id) {
+    return
+  }
+
+  const rect = carte.getBoundingClientRect()
+
+  const dansLaCarte =
+    e.clientX >= rect.left &&
+    e.clientX <= rect.right &&
+    e.clientY >= rect.top &&
+    e.clientY <= rect.bottom
+
+  if (dansLaCarte) {
+    carteCible = carte
+  }
+})
+
+  if (!carteCible) {
+    setCibleDeplacement(null)
+    return
+  }
+
+  const idCible = Number(carteCible.dataset.id)
+
+  const produitCible = produits.find(
+    (produit) => produit.id === idCible
+  )
+
+  if (!produitCible) return
+
+  if (
+    produitCible.id !== produitEnDeplacement.id
+  ) {
+    setCibleDeplacement(produitCible)
+  } else {
+    setCibleDeplacement(null)
+  }
+}
   // =========================
   // MODIFIER PRODUIT
   // =========================
+const deplacerProduit = (produitCible) => {
+  if (
+    !modeReorganisation ||
+    !produitEnDeplacement ||
+    produitEnDeplacement.id === produitCible.id
+  ) {
+    return
+  }
 
+  if (
+    produitEnDeplacement.categorie !==
+    produitCible.categorie
+  ) {
+    return
+  }
+
+  const produitsCategorie = produits
+    .filter(
+      (produit) =>
+        produit.categorie === produitCible.categorie
+    )
+    .sort(
+      (a, b) =>
+        (a.ordre ?? 9999) -
+        (b.ordre ?? 9999)
+    )
+
+  const indexDepart = produitsCategorie.findIndex(
+    (produit) =>
+      produit.id === produitEnDeplacement.id
+  )
+
+  const indexArrivee = produitsCategorie.findIndex(
+    (produit) =>
+      produit.id === produitCible.id
+  )
+
+  const [produitDeplace] =
+    produitsCategorie.splice(indexDepart, 1)
+
+  produitsCategorie.splice(
+    indexArrivee,
+    0,
+    produitDeplace
+  )
+
+  reordonnerProduits(produitsCategorie)
+
+  setProduitEnDeplacement(null)
+}
   const commencerModification = (produit) => {
     setProduitEnModification(produit)
     setNom(produit.nom)
@@ -51,6 +206,7 @@ setPrixMarche(produit.prixMarche)
 setPrixEvenement(produit.prixEvenement)
 setCategorie(produit.categorie)
 setTypeRecette(produit.typeRecette ?? 'vege')
+setCouleurProduit(produit.couleur || '#F6D6DC')
     setIngredients(produit.ingredients || [])
     setSupplementEnModification(null)
 
@@ -108,70 +264,78 @@ setCategorie('Sweet')
   // ENREGISTRER PRODUIT
   // =========================
 
-  const enregistrer = (e) => {
-    e.preventDefault()
+const enregistrer = (e) => {
+  e.preventDefault()
 
-if (!nom) {
-  return
-}
-
-if (
-  tarifActif === 'marche' &&
-  !prixMarche
-) {
-  return
-}
-
-if (
-  tarifActif === 'evenement' &&
-  !prixEvenement
-) {
-  return
-}
-
-    if (produitEnModification) {
-  modifierProduit({
-    ...produitEnModification,
-    nom: nom,
-    prixMarche:
-      tarifActif === 'marche'
-        ? Number(prixMarche)
-        : produitEnModification.prixMarche,
-    prixEvenement:
-      tarifActif === 'evenement'
-        ? Number(prixEvenement)
-        : produitEnModification.prixEvenement,
-    categorie: categorie,
-    ingredients: ingredients,
-  })
-
-  annulerModification()
-}else {
-ajouterProduit({
-  id: Date.now(),
-  nom: nom,
-  prixMarche:
-    prixMarche !== ''
-      ? Number(prixMarche)
-      : Number(prixEvenement),
-  prixEvenement:
-    prixEvenement !== ''
-      ? Number(prixEvenement)
-      : Number(prixMarche),
- categorie: categorie,
-typeRecette: typeRecette,
-ingredients: ingredients,
-})
-
-      setNom('')
-setPrixMarche('')
-setPrixEvenement('')
-setCategorie('Sweet')
-      setIngredients([])
-      setNomIngredient('')
-      setPrixIngredient('')
-    }
+  if (!nom) {
+    return
   }
+
+  if (
+    tarifActif === 'marche' &&
+    !prixMarche
+  ) {
+    return
+  }
+
+  if (
+    tarifActif === 'evenement' &&
+    !prixEvenement
+  ) {
+    return
+  }
+console.log(
+  'COULEUR AVANT MODIFICATION :',
+  couleurProduit
+)
+  if (produitEnModification) {
+    modifierProduit({
+      ...produitEnModification,
+      nom: nom,
+      prixMarche:
+        tarifActif === 'marche'
+          ? Number(prixMarche)
+          : produitEnModification.prixMarche,
+      prixEvenement:
+        tarifActif === 'evenement'
+          ? Number(prixEvenement)
+          : produitEnModification.prixEvenement,
+      categorie: categorie,
+      typeRecette: typeRecette,
+      ingredients: ingredients,
+      couleur: couleurProduit,
+      
+    })
+
+    annulerModification()
+  } else {
+    ajouterProduit({
+      id: Date.now(),
+      nom: nom,
+      prixMarche:
+        prixMarche !== ''
+          ? Number(prixMarche)
+          : Number(prixEvenement),
+      prixEvenement:
+        prixEvenement !== ''
+          ? Number(prixEvenement)
+          : Number(prixMarche),
+      categorie: categorie,
+      typeRecette: typeRecette,
+      ingredients: ingredients,
+      couleur: couleurProduit,
+    })
+
+    setNom('')
+    setPrixMarche('')
+    setPrixEvenement('')
+    setCategorie('Sweet')
+    setCouleurProduit('#F6D6DC')
+    setIngredients([])
+    setNomIngredient('')
+    setPrixIngredient('')
+  }
+}
 
   // =========================
   // MODIFIER SUPPLEMENT
@@ -325,15 +489,79 @@ setCategorie('Sweet')
       <div className="admin-produits">
 
         {produits
-  .filter(
-    (produit) =>
-      produit.categorie === categorieActive
+  .filter((produit) => produit.categorie === categorieActive)
+  .sort(
+    (a, b) =>
+      (a.ordre ?? 9999) -
+      (b.ordre ?? 9999)
   )
   .map((produit) => (
           <div
-            className="admin-produit"
-            key={produit.id}
-          >
+className={`admin-produit ${
+  modeReorganisation
+    ? 'mode-reorganisation'
+    : ''
+} ${
+  produitEnDeplacement?.id === produit.id
+    ? 'produit-en-deplacement'
+    : ''
+} ${
+  cibleDeplacement?.id === produit.id &&
+  produitEnDeplacement?.id !== produit.id
+    ? 'cible-deplacement'
+    : ''
+}`}
+
+  key={produit.id}
+  data-id={produit.id}
+  draggable={
+  modeReorganisation &&
+  !('ontouchstart' in window)
+}
+style={{
+  touchAction: modeReorganisation
+    ? 'none'
+    : 'auto',
+  userSelect: modeReorganisation
+    ? 'none'
+    : 'auto',
+  pointerEvents:
+  produitEnDeplacement?.id === produit.id
+    ? 'none'
+    : 'auto',  
+  transform:
+    produitEnDeplacement?.id === produit.id
+      ? `translate(
+          ${positionDoigt.x - positionDepart.x}px,
+          ${positionDoigt.y - positionDepart.y}px
+        ) scale(1.03)`
+      : undefined,
+zIndex:
+  produitEnDeplacement?.id === produit.id
+    ? 100
+    : cibleDeplacement?.id === produit.id
+      ? 50
+      : 'auto',
+}}
+onPointerDown={(e) => {
+  e.currentTarget.setPointerCapture(e.pointerId)
+  commencerAppui(produit, e)
+}}
+onPointerMove={deplacerAvecLeDoigt}
+onPointerUp={() => {
+  if (cibleDeplacement) {
+    deplacerProduit(cibleDeplacement)
+  }
+
+  terminerAppui()
+  setCibleDeplacement(null)
+}}
+onPointerCancel={terminerAppui}
+  onDragStart={() => setProduitEnDeplacement(produit)}
+onDragEnd={() => setProduitEnDeplacement(null)}
+onDragOver={(e) => e.preventDefault()}
+onDrop={() => deplacerProduit(produit)}
+>
 
             <div>
               <strong>{produit.nom}</strong>
@@ -377,7 +605,17 @@ setCategorie('Sweet')
         ))}
 
       </div>
-
+<button
+  type="button"
+  className="bouton-reorganisation"
+  onClick={() =>
+    setModeReorganisation(!modeReorganisation)
+  }
+>
+  {modeReorganisation
+    ? '✓ Terminer'
+    : '↕️ Réorganiser'}
+</button>
       <hr />
 
       {/* =========================
@@ -534,13 +772,45 @@ setCategorie('Sweet')
             Savoury
           </option>
         </select>
-        <div className="type-recette-admin">
+        {categorie === 'Sweet' && (
+  <div className="choix-couleur-crepe">
+    <label>Couleur de la crêpe</label>
 
-  <label>Type de recette</label>
+    <div className="palette-couleurs">
+      {couleursCrepes.map((couleur) => (
+        <button
+          key={couleur.valeur}
+          type="button"
+          className={`pastille-couleur ${
+            couleurProduit === couleur.valeur
+              ? 'selectionnee'
+              : ''
+          }`}
+          style={{
+            backgroundColor: couleur.valeur,
+          }}
+          onClick={() =>
+            setCouleurProduit(couleur.valeur)
+          }
+          title={couleur.nom}
+          aria-label={couleur.nom}
+        >
+          {couleurProduit === couleur.valeur
+            ? '✓'
+            : ''}
+        </button>
+      ))}
+    </div>
+  </div>
+)}
+{categorie === 'Savoury' && (
+  <div className="type-recette-admin">
 
-  <div className="choix-type-recette">
+    <label>Type de recette</label>
 
-    <button
+    <div className="choix-type-recette">
+
+      <button
       type="button"
       className={
         typeRecette === 'viande'
@@ -568,9 +838,9 @@ setCategorie('Sweet')
       🌱 Végé
     </button>
 
+    </div>
   </div>
-
-</div>
+)}
 
         <h3>🥞 Ingrédients</h3>
 
@@ -635,11 +905,14 @@ setCategorie('Sweet')
 
         </div>
 
-        <button type="submit">
-          {produitEnModification
-            ? '💾 Enregistrer'
-            : '➕ Ajouter le produit'}
-        </button>
+<button
+  type="submit"
+  className="bouton-ajouter-produit"
+>
+  {produitEnModification
+    ? '💾 Enregistrer'
+    : '➕ Ajouter le produit'}
+</button>
 
         {produitEnModification && (
           <button
@@ -704,11 +977,14 @@ setCategorie('Sweet')
           </option>
         </select>
 
-        <button type="submit">
-          {supplementEnModification
-            ? '💾 Enregistrer'
-            : '➕ Ajouter le supplément'}
-        </button>
+<button
+  type="submit"
+  className="bouton-ajouter-supplement"
+>
+  {supplementEnModification
+    ? '💾 Enregistrer'
+    : '➕ Ajouter le supplément'}
+</button>
 
         {supplementEnModification && (
           <button

@@ -10,7 +10,40 @@ import Cuisine from './components/Cuisine'
 import PersonnaliserProduits from './components/PersonnaliserProduits'
 import { supabase } from './supabase'
 
-
+const couleursCrepes = [
+  {
+    nom: 'Rose pastel',
+    valeur: '#F6D6DC',
+  },
+  {
+    nom: 'Marron clair',
+    valeur: '#D9B38C',
+  },
+  {
+    nom: 'Marron',
+    valeur: '#B9825B',
+  },
+  {
+    nom: 'Jaune pastel',
+    valeur: '#F6E7A8',
+  },
+  {
+    nom: 'Orange pastel',
+    valeur: '#F6C79C',
+  },
+  {
+    nom: 'Blanc',
+    valeur: '#FFFFFF',
+  },
+  {
+    nom: 'Gris',
+    valeur: '#D9D9D9',
+  },
+  {
+    nom: 'Marron orange',
+    valeur: '#C98F62',
+  },
+]
 function App() {
   console.log('APP.jsx CHARGÉ')
 useEffect(() => {
@@ -763,6 +796,8 @@ useEffect(() => {
         categorie: produit.categorie,
         typeRecette: produit.typeRecette,
         ingredients: produit.ingredients,
+        couleur: produit.couleur,
+        ordre: produit.ordre,
       })
     )
 
@@ -800,6 +835,8 @@ useEffect(() => {
           categorie: produit.categorie,
           typeRecette: produit.typeRecette,
           ingredients: produit.ingredients,
+          couleur: produit.couleur,
+          ordre: produit.ordre,
         }
 
         setMenu((ancienMenu) => {
@@ -971,6 +1008,8 @@ const ajouterNouveauProduit = async (nouveauProduit) => {
   categorie: nouveauProduit.categorie,
   typeRecette: nouveauProduit.typeRecette,
   ingredients: nouveauProduit.ingredients,
+couleur: nouveauProduit.couleur,
+
 })
     .select()
     .single()
@@ -993,8 +1032,44 @@ const ajouterNouveauProduit = async (nouveauProduit) => {
     produitAjoute,
   ])
 }
+const reordonnerProduits = async (nouveauxProduits) => {
+  const produitsAvecOrdre = nouveauxProduits.map(
+    (produit, index) => ({
+      ...produit,
+      ordre: index,
+    })
+  )
 
+setMenu((ancienMenu) => {
+  const menuMisAJour = ancienMenu.map((produit) => {
+    const produitReordonne = produitsAvecOrdre.find(
+      (p) => p.id === produit.id
+    )
+
+    return produitReordonne || produit
+  })
+
+  return menuMisAJour.sort(
+    (a, b) =>
+      (a.ordre ?? 9999) -
+      (b.ordre ?? 9999)
+  )
+})
+
+  for (const produit of produitsAvecOrdre) {
+    await supabase
+      .from('produits')
+      .update({
+        ordre: produit.ordre,
+      })
+      .eq('id', produit.id)
+  }
+}
 const modifierProduit = async (produitModifie) => {
+  console.log(
+  'COULEUR ENVOYÉE À SUPABASE :',
+  produitModifie.couleur
+)
   const { data, error } = await supabase
     .from('produits')
     .update({
@@ -1004,6 +1079,7 @@ const modifierProduit = async (produitModifie) => {
       categorie: produitModifie.categorie,
       typeRecette: produitModifie.typeRecette,
       ingredients: produitModifie.ingredients,
+      couleur: produitModifie.couleur,
     })
     .eq('id', produitModifie.id)
     .select()
@@ -1404,6 +1480,11 @@ if (error) {
 const produitsAffiches = menu
   .filter(
     (produit) => produit.categorie === categorie
+  )
+  .sort(
+    (a, b) =>
+      (a.ordre ?? 9999) -
+      (b.ordre ?? 9999)
   )
   .map((produit) => ({
     ...produit,
@@ -2335,6 +2416,7 @@ onClick={() => {
   ajouterProduit={ajouterNouveauProduit}
   modifierProduit={modifierProduit}
   supprimerProduit={supprimerProduitDuMenu}
+  reordonnerProduits={reordonnerProduits}
   supplements={supplements}
   ajouterSupplement={ajouterSupplement}
   modifierSupplement={modifierSupplement}
@@ -2507,15 +2589,29 @@ onClick={() => {
 
 {produitsAffiches.map((produit) => (
 
-  <div
-    key={produit.id}
-    className={`produit ${
-  produit.categorie === 'Savoury'
-    ? produit.typeRecette === 'viande'
-      ? 'produit-viande'
-      : 'produit-vege'
-    : ''
-}`}
+<div
+  key={produit.id}
+  className={`produit ${
+    produit.categorie === 'Savoury'
+      ? produit.typeRecette === 'viande'
+        ? 'produit-viande'
+        : 'produit-vege'
+      : ''
+  }`}
+  style={
+    produit.categorie === 'Sweet'
+      ? {
+          backgroundColor:
+            produit.couleur || '#F6D6DC',
+          color:
+            ['#2d2d2d', '#8B5A3C', '#a3612f', '#d0863bc5'].includes(
+              produit.couleur
+            )
+              ? '#FFFFFF'
+              : '#333333',
+        }
+      : undefined
+  }
   onClick={() => ajouterProduit(produit)}
 >
   <strong>
