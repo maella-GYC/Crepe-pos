@@ -22,8 +22,8 @@ function Cuisine({ commandes, changerStatut }) {
   <div className="infos-commande-cuisine">
 
     <div className="numero-commande">
-      #{commande.numero}
-    </div>
+  Ticket : {commande.numeroTicket ?? '—'}
+</div>
 
     <div className="articles-cuisine">
       {commande.articles.map((article) => (

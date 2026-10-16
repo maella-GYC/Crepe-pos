@@ -97,6 +97,7 @@ main {
   margin-top: 0;
 }
 
+
 .articles {
   flex: 1;
 }
@@ -1281,6 +1282,24 @@ justify-content: center;
   border-top: 1px solid #eee;
   color: #666;
 }
+
+.infos-ticket-historique {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ticket-historique {
+  display: inline-block;
+  background: #e8f3ff;
+  color: #1557a0;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 22px;
+  font-weight: bold;
+}
+
 .resume-commandes-actif {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1692,14 +1711,19 @@ justify-content: center;
   min-width: 65px;
   text-align: right;
 }
+
+
 .actions-panier {
   position: sticky;
   bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
   background: white;
-  padding-top: 10px;
-  padding-bottom: 5px;
-  z-index: 20;
+  padding: 10px 12px 5px;
+  z-index: 1000;
 }
+
+
 .actions-panier .total {
   margin-top: 0;
   margin-bottom: 5px;
@@ -1709,8 +1733,9 @@ justify-content: center;
 .actions-panier .annuler-commande,
 .actions-panier .bouton-payer {
   position: relative;
-  z-index: 21;
+  z-index: 1001;
 }
+
 .titre-panier {
   display: flex;
   align-items: center;
@@ -2305,4 +2330,58 @@ justify-content: center;
 
 .bouton-ajouter-supplement:active {
   transform: scale(0.97);
+}
+
+
+
+
+@media (max-width: 600px) {
+  .actions-panier {
+    position: static;
+    width: 100%;
+    box-sizing: border-box;
+    background: white;
+    padding: 10px 12px 5px;
+    box-shadow: none;
+  }
+
+  .actions-panier.panier-fixe-mobile {
+    position: sticky;
+    bottom: 0;
+    left: auto;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    background: white;
+    padding: 10px 12px 5px;
+    z-index: 10;
+    box-shadow: none;
+  }
+}
+
+.zone-commande {
+  position: relative;
+}
+
+.ticket-panier {
+  font-size: 22px;
+  font-weight: bold;
+  margin: 12px 0;
+}
+
+.infos-ticket-historique {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ticket-historique {
+  display: inline-block;
+  background: #e8f3ff;
+  color: #1557a0;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 22px;
+  font-weight: bold;
 }

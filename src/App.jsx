@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   produits,
   supplementsSweet,
@@ -46,6 +46,45 @@ const couleursCrepes = [
 ]
 function App() {
   console.log('APP.jsx CHARGÉ')
+
+const actionsPanierRef = useRef(null)
+const finPanierRef = useRef(null)
+const zoneCommandeRef = useRef(null)
+const [hauteurActionsPanier, setHauteurActionsPanier] = useState(0)
+const [largeurZoneCommande, setLargeurZoneCommande] = useState(0)
+const [gaucheZoneCommande, setGaucheZoneCommande] = useState(0)
+const [recapVisible, setRecapVisible] = useState(false)
+console.log('Récapitulatif visible :', recapVisible)
+
+
+useEffect(() => {
+  const mesurerPanier = () => {
+    const zone = zoneCommandeRef.current
+    const barre = actionsPanierRef.current
+
+    if (zone) {
+      const position = zone.getBoundingClientRect()
+      setLargeurZoneCommande(position.width)
+      setGaucheZoneCommande(position.left)
+    }
+
+    if (barre) {
+      setHauteurActionsPanier(barre.offsetHeight)
+    }
+  }
+
+  mesurerPanier()
+  window.addEventListener('resize', mesurerPanier)
+
+  return () => {
+    window.removeEventListener('resize', mesurerPanier)
+  }
+}, [])
+
+
+const paiementEnCours = useRef(false)
+const [paiementEnregistrement, setPaiementEnregistrement] = useState(false)
+const clePaiementActuelle = useRef(null)
 
 const [session, setSession] = useState(null)
 const [chargementSession, setChargementSession] = useState(true)
@@ -106,26 +145,29 @@ useEffect(() => {
       return
     }
 
-    const historique = (evenements || []).map(
-      (evenement) => ({
-        ...evenement,
-        commandes: (commandes || [])
-          .filter(
-            (commande) =>
-              String(commande.evenement_id) ===
-              String(evenement.id)
-          )
-          .map((commande) => ({
-            id: commande.id,
-            evenementId: commande.evenement_id,
-            numero: commande.numero,
-            articles: commande.articles,
-            total: commande.total,
-            modePaiement: commande.mode_paiement,
-            statut: commande.statut,
-          })),
-      })
-    )
+
+const historique = (evenements || []).map(
+  (evenement) => ({
+    ...evenement,
+    commandes: (commandes || [])
+      .filter(
+        (commande) =>
+          String(commande.evenement_id) ===
+          String(evenement.id)
+      )
+      .map((commande) => ({
+        id: commande.id,
+        evenementId: commande.evenement_id,
+        numero: commande.numero,
+        numeroTicket: commande.numero_ticket,
+        articles: commande.articles,
+        total: commande.total,
+        modePaiement: commande.mode_paiement,
+        statut: commande.statut,
+      })),
+  })
+)
+
 
     setHistoriqueEvenements(historique)
 
@@ -230,16 +272,19 @@ useEffect(() => {
                 return
               }
 
-              const commandesEvenement =
-                (data || []).map((commande) => ({
-                  id: commande.id,
-                  evenementId: commande.evenement_id,
-                  numero: commande.numero,
-                  articles: commande.articles,
-                  total: commande.total,
-                  modePaiement: commande.mode_paiement,
-                  statut: commande.statut,
-                }))
+              
+const commandesEvenement =
+  (data || []).map((commande) => ({
+    id: commande.id,
+    evenementId: commande.evenement_id,
+    numero: commande.numero,
+    numeroTicket: commande.numero_ticket,
+    articles: commande.articles,
+    total: commande.total,
+    modePaiement: commande.mode_paiement,
+    statut: commande.statut,
+  }))
+
 
               setHistoriqueEvenements(
                 (anciensEvenements) => {
@@ -364,6 +409,7 @@ useEffect(() => {
         id: commande.id,
         evenementId: commande.evenement_id,
         numero: commande.numero,
+        numeroTicket: commande.numero_ticket,
         articles: commande.articles,
         total: commande.total,
         modePaiement: commande.mode_paiement,
@@ -398,15 +444,18 @@ useEffect(() => {
         const commande = payload.new
 
 
-        const nouvelleCommande = {
-          id: commande.id,
-          evenementId: commande.evenement_id,
-          numero: commande.numero,
-          articles: commande.articles,
-          total: commande.total,
-          modePaiement: commande.mode_paiement,
-          statut: commande.statut,
-        }
+        
+const nouvelleCommande = {
+  id: commande.id,
+  evenementId: commande.evenement_id,
+  numero: commande.numero,
+  numeroTicket: commande.numero_ticket,
+  articles: commande.articles,
+  total: commande.total,
+  modePaiement: commande.mode_paiement,
+  statut: commande.statut,
+}
+
         
 
         setCommandes((anciennesCommandes) => {
@@ -603,6 +652,7 @@ const supplementRealtime = {
   const [creationEnCours, setCreationEnCours] =
   useState(false)
 const [commandes, setCommandes] = useState([])
+const [prochainTicket, setProchainTicket] = useState(null)
 const [historiqueEvenements, setHistoriqueEvenements] =
   useState([])
 const [evenement, setEvenement] = useState(null)
@@ -678,6 +728,7 @@ if (
 
   chargerEvenements()
 }, [session])
+
 const [connexionEnCours, setConnexionEnCours] =
   useState(false)
 const [erreurConnexion, setErreurConnexion] =
@@ -763,6 +814,45 @@ const [historiqueCommandesActif, setHistoriqueCommandesActif] =
   accueil,
   creationEvenement,
 ])
+useEffect(() => {
+  console.log('EFFET TICKET DÉMARRÉ')
+console.log('ÉVÉNEMENT POUR LE TICKET :', evenement)
+  if (!evenement?.id) {
+    setProchainTicket(null)
+    return
+  }
+
+  let actif = true
+
+  const chargerProchainTicket = async () => {
+    const { data, error } = await supabase
+      .from('compteurs_tickets')
+      .select('dernier_ticket')
+      .eq('evenement_id', evenement.id)
+      .maybeSingle()
+
+    if (error) {
+      console.error(
+        'Erreur lors du chargement du prochain ticket :',
+        error
+      )
+      return
+    }
+
+    const dernierTicket = Number(data?.dernier_ticket ?? 0)
+    const prochain = (dernierTicket % 20) + 1
+
+    if (actif) {
+      setProchainTicket(prochain)
+    }
+  }
+
+  chargerProchainTicket()
+
+  return () => {
+    actif = false
+  }
+}, [evenement?.id])
 const [paiement, setPaiement] = useState(false)
 const [modePaiement, setModePaiement] = useState('')
 const [montantRecu, setMontantRecu] = useState('')
@@ -1385,68 +1475,151 @@ const totalSavoury = commandesEvenement.reduce(
   // PAIEMENT
   // =========================
 
-  const enregistrerPaiement = async () => {
-    if (!modePaiement) {
-      return
-    }
+ 
+const enregistrerPaiement = async () => {
+  if (paiementEnCours.current) return
 
-    if (
-      modePaiement === 'Espèces' &&
-      Number(montantRecu) < total
-    ) {
-      return
-    }
+  if (!modePaiement) return
 
-const numeroCommande = String(
-  commandes.filter(
-    (item) => item.evenementId === evenement.id
-  ).length + 1
-).padStart(3, '0')
+  if (
+    modePaiement === 'Espèces' &&
+    Number(montantRecu) < total
+  ) {
+    return
+  }
+
+  paiementEnCours.current = true
+setPaiementEnregistrement(true)
+
+  if (!clePaiementActuelle.current) {
+    clePaiementActuelle.current =
+      crypto.randomUUID()
+  }
+
+  const clePaiement = clePaiementActuelle.current
+
+  try {
+    const numeroCommande = String(
+      commandes.filter(
+        (item) =>
+          String(item.evenementId) ===
+          String(evenement.id)
+      ).length + 1
+    ).padStart(3, '0')
 
 const { data, error } = await supabase
-  .from('commandes')
-  .insert({
-    evenement_id: evenement.id,
-    numero: numeroCommande,
-    articles: panierActuel,
-    total: total,
-    mode_paiement: modePaiement,
-    statut: 'Nouvelle',
+  .rpc('enregistrer_commande_avec_ticket', {
+    p_evenement_id: evenement.id,
+    p_numero: numeroCommande,
+    p_articles: panierActuel,
+    p_total: total,
+    p_mode_paiement: modePaiement,
+    p_cle_paiement: clePaiement,
   })
-  .select()
-  .single()
 
-if (error) {
+let commandeEnregistree = data?.[0] ?? null
+
+    if (error) {
+      console.error(
+        'Erreur lors de l’enregistrement :',
+        error
+      )
+
+      const { data: commandeExistante, error: erreurRecherche } =
+        await supabase
+          .from('commandes')
+          .select('*')
+          .eq('cle_paiement', clePaiement)
+          .maybeSingle()
+
+      if (erreurRecherche || !commandeExistante) {
+        console.error(
+          'Impossible de confirmer le paiement. La clé est conservée pour réessayer sans créer une nouvelle tentative.'
+        )
+        return
+      }
+
+      commandeEnregistree = commandeExistante
+    }
+
+if (!commandeEnregistree) {
   console.error(
-    'Erreur lors de l’enregistrement de la commande :',
-    error
+    'Aucune commande retournée par Supabase.'
   )
   return
 }
+console.log('PAIEMENT CONFIRMÉ, ACTUALISATION DU TICKET')
+const { data: compteurActualise, error: erreurCompteur } =
+  await supabase
+    .from('compteurs_tickets')
+    .select('dernier_ticket')
+    .eq('evenement_id', evenement.id)
+    .maybeSingle()
+console.log('RÉSULTAT COMPTEUR APRÈS PAIEMENT :', {
+  compteurActualise,
+  erreurCompteur,
+  evenementId: evenement.id,
+})
+if (erreurCompteur) {
+  console.error(
+    'Erreur lors de l’actualisation du prochain ticket :',
+    erreurCompteur
+  )
+} else {
+  const dernierTicket = Number(
+    compteurActualise?.dernier_ticket ?? 0
+  )
 
-const nouvelleCommande = {
-  id: data.id,
-  evenementId: data.evenement_id,
-  numero: data.numero,
-  articles: data.articles,
-  total: data.total,
-  modePaiement: data.mode_paiement,
-  statut: data.statut,
+  setProchainTicket((dernierTicket % 20) + 1)
+  console.log(
+  'COMPTEUR APRÈS PAIEMENT :',
+  compteurActualise?.dernier_ticket
+)
 }
 
-setCommandes((anciennesCommandes) => [
-  ...anciennesCommandes,
-  nouvelleCommande,
-])
+    const nouvelleCommande = {
+  id: commandeEnregistree.id,
+  evenementId: commandeEnregistree.evenement_id,
+  numero: commandeEnregistree.numero,
+  numeroTicket: commandeEnregistree.numero_ticket,
+  articles: commandeEnregistree.articles,
+  total: commandeEnregistree.total,
+  modePaiement: commandeEnregistree.mode_paiement,
+  statut: commandeEnregistree.statut,
+}
+
+    setCommandes((anciennesCommandes) =>
+      anciennesCommandes.some(
+        (commande) =>
+          String(commande.id) ===
+          String(nouvelleCommande.id)
+      )
+        ? anciennesCommandes
+        : [...anciennesCommandes, nouvelleCommande]
+    )
 
     setCommandesEnCours((anciensPaniers) => ({
-  ...anciensPaniers,
-  [evenement.id]: [],
-}))
+      ...anciensPaniers,
+      [evenement.id]: [],
+    }))
+
+    clePaiementActuelle.current = null
+
     setPaiement(false)
     setModePaiement('')
     setMontantRecu('')
-  }
+  } catch (erreur) {
+    console.error(
+      'Erreur inattendue lors du paiement :',
+      erreur
+    )
+  } finally {
+  paiementEnCours.current = false
+  setPaiementEnregistrement(false)
+}
+}
+
+
 
   // =========================
   // CUISINE
@@ -1848,9 +2021,14 @@ return (
 
             <div className="entete-commande-historique">
 
-              <strong>
-                #{commande.numero}
-              </strong>
+              <div className="infos-ticket-historique">
+  <span className="ticket-historique">
+   Ticket : {commande.numeroTicket ?? '—'}
+  </span>
+  <strong>
+    Commande #{commande.numero}
+  </strong>
+</div>
 
               <span>
                 {commande.total.toFixed(2)} $
@@ -2057,41 +2235,34 @@ return (
     }
 
 
-    const { data: evenementSupprime, error: erreurEvenement } =
+const { data: evenementSupprime, error: erreurEvenement } =
   await supabase
     .from('evenements')
     .delete()
     .eq('id', ancienEvenement.id)
     .select()
 
-console.log(
-  'ÉVÉNEMENT SUPPRIMÉ SUPABASE :',
-  evenementSupprime
-)
-
 if (erreurEvenement) {
   console.error(
     'Erreur lors de la suppression de l’événement :',
     erreurEvenement
   )
+  alert('Impossible de supprimer cet événement.')
   return
 }
 
-    if (erreurEvenement) {
-      console.error(
-        'Erreur lors de la suppression de l’événement :',
-        erreurEvenement
-      )
-      return
-    }
+if (!evenementSupprime || evenementSupprime.length === 0) {
+  console.error('Aucun événement supprimé dans Supabase.')
+  alert('L’événement n’a pas été supprimé dans la base de données.')
+  return
+}
 
-    setHistoriqueEvenements(
-      (anciensEvenements) =>
-        anciensEvenements.filter(
-          (evenement) =>
-            evenement.id !== ancienEvenement.id
-        )
-    )
+setHistoriqueEvenements((anciensEvenements) =>
+  anciensEvenements.filter(
+    (evenement) =>
+      String(evenement.id) !== String(ancienEvenement.id)
+  )
+)
   }}
 >
   🗑️
@@ -2481,8 +2652,10 @@ onClick={() => {
 
             <div className="entete-commande-historique">
 
-              <strong>
-                #{commande.numero}
+                            <strong>
+                Ticket : {commande.numeroTicket ?? '—'}
+                {' · '}
+                Commande #{commande.numero}
               </strong>
 
               <span>
@@ -2652,6 +2825,7 @@ onClick={() => {
 
             <aside className="panier">
 
+<div className="zone-commande" ref={zoneCommandeRef}>
 <div className="titre-panier">
   <h2>Commande</h2>
 
@@ -2672,7 +2846,11 @@ onClick={() => {
     🗑️
   </button>
 </div>
-
+{prochainTicket !== null && (
+  <div className="ticket-panier">
+    Ticket : <strong>{prochainTicket}</strong>
+  </div>
+)}
               <div className="articles">
 
                 {panierActuel.length === 0 ? (
@@ -2771,7 +2949,14 @@ onClick={() => {
 
               </div>
 
- <div className="actions-panier">
+<div
+  ref={actionsPanierRef}
+  className="actions-panier panier-fixe-mobile"
+  data-recap-visible={String(recapVisible)}
+  
+>
+
+
 
   <div className="total">
 
@@ -2797,7 +2982,19 @@ onClick={() => {
 </button>
 
 </div>
-<div className="recap-evenement">
+
+
+<div
+  aria-hidden="true"
+  style={{
+    height: hauteurActionsPanier,
+  }}
+/>
+
+</div>
+
+<div className="recap-evenement" ref={finPanierRef}>
+
 
   <h3>📊 Récapitulatif de l'événement</h3>
   <div className="evenement-recap-infos">
@@ -2826,19 +3023,43 @@ onClick={() => {
     </strong>
   </div>
 
-  <div className="ligne-recap">
-    <span>🥞 Sweet</span>
-    <strong>
-      {totalSweet.toFixed(2)} $
-    </strong>
-  </div>
+<div className="ligne-recap">
+  <span>🥞 Sweet</span>
+  <strong>
+    {commandesEvenement.reduce(
+      (total, commande) =>
+        total +
+        (commande.articles || []).reduce(
+          (nombre, article) =>
+            nombre +
+            (article.categorie === 'Sweet'
+              ? Number(article.quantite || 1)
+              : 0),
+          0
+        ),
+      0
+    )}
+  </strong>
+</div>
 
-  <div className="ligne-recap">
-    <span>🧀 Savoury</span>
-    <strong>
-      {totalSavoury.toFixed(2)} $
-    </strong>
-  </div>
+<div className="ligne-recap">
+  <span>🧀 Savoury</span>
+  <strong>
+    {commandesEvenement.reduce(
+      (total, commande) =>
+        total +
+        (commande.articles || []).reduce(
+          (nombre, article) =>
+            nombre +
+            (article.categorie === 'Savoury'
+              ? Number(article.quantite || 1)
+              : 0),
+          0
+        ),
+      0
+    )}
+  </strong>
+</div>
 
 </div>
 <button
@@ -2997,20 +3218,21 @@ setHistoriqueCommandesActif(false)
 
                   )}
 
-                  {modePaiement && (
-
-                    <button
-  className="confirmer-paiement"
-  onClick={enregistrerPaiement}
-  disabled={
-    modePaiement === 'Espèces' &&
-    Number(montantRecu) < total
-  }
->
-  ✅ Enregistrer le paiement
-</button>
-
-                  )}
+{modePaiement && (
+  <button
+    className="confirmer-paiement"
+    onClick={enregistrerPaiement}
+    disabled={
+      paiementEnregistrement ||
+      (modePaiement === 'Espèces' &&
+        Number(montantRecu) < total)
+    }
+  >
+    {paiementEnregistrement
+      ? '⏳ Enregistrement...'
+      : '✅ Enregistrer le paiement'}
+  </button>
+)}
 
                   <button
                     className="annuler-paiement"
