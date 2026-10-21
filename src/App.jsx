@@ -74,9 +74,21 @@ useEffect(() => {
   }
 
   mesurerPanier()
+
+  const observer = new ResizeObserver(mesurerPanier)
+
+  if (zoneCommandeRef.current) {
+    observer.observe(zoneCommandeRef.current)
+  }
+
+  if (actionsPanierRef.current) {
+    observer.observe(actionsPanierRef.current)
+  }
+
   window.addEventListener('resize', mesurerPanier)
 
   return () => {
+    observer.disconnect()
     window.removeEventListener('resize', mesurerPanier)
   }
 }, [])
@@ -1413,6 +1425,7 @@ const supprimerProduit = (id) => {
     somme + Number(article.prix) * article.quantite,
   0
 )
+
 const commandesEvenement = commandes.filter(
   (item) =>
     String(item.evenementId) ===
@@ -2962,9 +2975,11 @@ onClick={() => {
 
     <span>Total</span>
 
-    <strong>
-      {total.toFixed(2)} $
-    </strong>
+    
+<strong key={total.toFixed(2)}>
+  {total.toFixed(2)} $
+</strong>
+
 
   </div>
 
@@ -2982,14 +2997,6 @@ onClick={() => {
 </button>
 
 </div>
-
-
-<div
-  aria-hidden="true"
-  style={{
-    height: hauteurActionsPanier,
-  }}
-/>
 
 </div>
 
@@ -3198,6 +3205,16 @@ setHistoriqueCommandesActif(false)
   }
   placeholder="0.00"
 />
+
+<button
+  type="button"
+  className="montant-exact"
+  onClick={() =>
+    setMontantRecu(total.toFixed(2))
+  }
+>
+  ⚡ Montant exact
+</button>
 
                       {Number(montantRecu) >= total && (
 

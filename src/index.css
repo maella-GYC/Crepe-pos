@@ -342,6 +342,31 @@ justify-content: center;
 .especes p strong {
   font-size: 19px;
 }
+
+
+.especes .montant-exact {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border: 1px solid #b8ddc1;
+  border-radius: 12px;
+  background: #e5f5e9;
+  color: #28613a;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.especes .montant-exact:hover {
+  background: #d2ecd9;
+}
+
+.especes .montant-exact:active {
+  transform: scale(0.98);
+}
+
 .confirmer-paiement {
   width: 100%;
   min-height: 58px;
@@ -1726,9 +1751,11 @@ justify-content: center;
 
 .actions-panier .total {
   margin-top: 0;
-  margin-bottom: 5px;
-  background: white;
+  margin-bottom: 0;
+  padding: 10px 0 5px;
+  background: transparent;
 }
+
 
 .actions-panier .annuler-commande,
 .actions-panier .bouton-payer {
@@ -2336,6 +2363,10 @@ justify-content: center;
 
 
 @media (max-width: 600px) {
+  .panier {
+  padding-bottom: 20px;
+}
+
   .actions-panier {
     position: static;
     width: 100%;
@@ -2348,16 +2379,23 @@ justify-content: center;
   .actions-panier.panier-fixe-mobile {
     position: sticky;
     bottom: 0;
-    left: auto;
+    left: 0;
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
     background: white;
-    padding: 10px 12px 5px;
-    z-index: 10;
+    padding: 6px 12px 5px;
     box-shadow: none;
   }
+
+  .actions-panier .total strong {
+    display: inline-block;
+    min-width: 1px;
+    text-align: right;
+  }
 }
+
+
 
 .zone-commande {
   position: relative;
