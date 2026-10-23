@@ -897,21 +897,24 @@ useEffect(() => {
       return
     }
 
-    const produitsSupabase = (data || []).map(
-      (produit) => ({
-        id: produit.id,
-        nom: produit.nom,
-        prixMarche: produit.prixMarche,
-        prixEvenement: produit.prixEvenement,
-        categorie: produit.categorie,
-        typeRecette: produit.typeRecette,
-        ingredients: produit.ingredients,
-        couleur: produit.couleur,
-        ordre: produit.ordre,
-      })
-    )
 
-    setMenu(produitsSupabase)
+const produitsSupabase = (data || []).map(
+  (produit) => ({
+    id: produit.id,
+    nom: produit.nom,
+    prixMarche: produit.prixMarche,
+    prixEvenement: produit.prixEvenement,
+    categorie: produit.categorie,
+    typeRecette: produit.typeRecette,
+    ingredients: produit.ingredients,
+    couleur: produit.couleur,
+    ordre: produit.ordre,
+    visible: produit.visible ?? true,
+  })
+)
+
+setMenu(produitsSupabase)
+
 
     console.log(
       'Produits chargés depuis Supabase :',
@@ -939,17 +942,20 @@ useEffect(() => {
     ? payload.old
     : payload.new
 
-        const produitRealtime = {
-          id: produit.id,
-          nom: produit.nom,
-          prixMarche: produit.prixMarche,
-          prixEvenement: produit.prixEvenement,
-          categorie: produit.categorie,
-          typeRecette: produit.typeRecette,
-          ingredients: produit.ingredients,
-          couleur: produit.couleur,
-          ordre: produit.ordre,
-        }
+        
+const produitRealtime = {
+  id: produit.id,
+  nom: produit.nom,
+  prixMarche: produit.prixMarche,
+  prixEvenement: produit.prixEvenement,
+  categorie: produit.categorie,
+  typeRecette: produit.typeRecette,
+  ingredients: produit.ingredients,
+  couleur: produit.couleur,
+  ordre: produit.ordre,
+  visible: produit.visible ?? true,
+}
+
 
         setMenu((ancienMenu) => {
           if (payload.eventType === 'INSERT') {
@@ -1177,6 +1183,40 @@ setMenu((ancienMenu) => {
       .eq('id', produit.id)
   }
 }
+
+const basculerVisibiliteProduit = async (produit) => {
+  const produitActuel = menu.find(
+    (p) => p.id === produit.id
+  )
+
+  if (!produitActuel) return
+
+  const nouvelleVisibilite =
+    produitActuel.visible === false
+
+  const { error } = await supabase
+    .from('produits')
+    .update({ visible: nouvelleVisibilite })
+    .eq('id', produit.id)
+
+  if (error) {
+    console.error(
+      'Erreur de visibilité :',
+      error
+    )
+    alert('Impossible de modifier la visibilité du produit.')
+    return
+  }
+
+  setMenu((ancienMenu) =>
+    ancienMenu.map((p) =>
+      p.id === produit.id
+        ? { ...p, visible: nouvelleVisibilite }
+        : p
+    )
+  )
+}
+
 const modifierProduit = async (produitModifie) => {
   console.log(
   'COULEUR ENVOYÉE À SUPABASE :',
@@ -1673,10 +1713,12 @@ if (error) {
   )
 }
 
-const produitsAffiches = menu
-  .filter(
-    (produit) => produit.categorie === categorie
-  )
+
+const produitsAffiches = menu.filter(
+  (produit) =>
+    produit.categorie === categorie &&
+    produit.visible !== false
+)
   .sort(
     (a, b) =>
       (a.ordre ?? 9999) -
@@ -2611,6 +2653,7 @@ onClick={() => {
   modifierProduit={modifierProduit}
   supprimerProduit={supprimerProduitDuMenu}
   reordonnerProduits={reordonnerProduits}
+  basculerVisibiliteProduit={basculerVisibiliteProduit}
   supplements={supplements}
   ajouterSupplement={ajouterSupplement}
   modifierSupplement={modifierSupplement}

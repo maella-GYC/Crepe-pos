@@ -2423,3 +2423,20 @@ justify-content: center;
   font-size: 22px;
   font-weight: bold;
 }
+
+
+.admin-produit.produit-masque {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+
+
+.boutons-gestion-produits {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.boutons-gestion-produits button {
+  flex: 1;
+}

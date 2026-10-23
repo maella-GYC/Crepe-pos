@@ -15,6 +15,7 @@ function Admin({
   modifierProduit,
   supprimerProduit,
   reordonnerProduits,
+  basculerVisibiliteProduit,
   supplements,
   ajouterSupplement,
   modifierSupplement,
@@ -53,6 +54,7 @@ const [prixEvenement, setPrixEvenement] = useState('')
 ] = useState('Sweet')
 const [modeReorganisation, setModeReorganisation] =
   useState(false)
+  const [modeAffichage, setModeAffichage] = useState(false)
   const [produitEnDeplacement, setProduitEnDeplacement] =
   useState(null)
   const [appuiEnCours, setAppuiEnCours] = useState(null)
@@ -201,6 +203,7 @@ const deplacerProduit = (produitCible) => {
 
   setProduitEnDeplacement(null)
 }
+
   const commencerModification = (produit) => {
     setProduitEnModification(produit)
     setNom(produit.nom)
@@ -499,6 +502,7 @@ console.log(
   )
   .map((produit) => (
           <div
+
 className={`admin-produit ${
   modeReorganisation
     ? 'mode-reorganisation'
@@ -512,7 +516,12 @@ className={`admin-produit ${
   produitEnDeplacement?.id !== produit.id
     ? 'cible-deplacement'
     : ''
+} ${
+  produit.visible === false
+    ? 'produit-masque'
+    : ''
 }`}
+
 
   key={produit.id}
   data-id={produit.id}
@@ -582,6 +591,33 @@ onDrop={() => deplacerProduit(produit)}
             </div>
 
             <div className="admin-actions">
+  
+{modeAffichage && (
+  <button
+    type="button"
+    className="bouton-visibilite-produit"
+    title={
+      produit.visible === false
+        ? 'Réafficher le produit'
+        : 'Masquer le produit'
+    }
+    onPointerDown={(e) => {
+      e.stopPropagation()
+    }}
+    onPointerUp={(e) => {
+      e.stopPropagation()
+    }}
+    onClick={(e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      basculerVisibiliteProduit(produit)
+    }}
+    draggable={false}
+  >
+    {produit.visible === false ? '🙈' : '👁️'}
+  </button>
+)}
+
 
               <button
                 type="button"
@@ -607,17 +643,31 @@ onDrop={() => deplacerProduit(produit)}
         ))}
 
       </div>
-<button
-  type="button"
-  className="bouton-reorganisation"
-  onClick={() =>
-    setModeReorganisation(!modeReorganisation)
-  }
->
-  {modeReorganisation
-    ? '✓ Terminer'
-    : '↕️ Réorganiser'}
-</button>
+
+<div className="boutons-gestion-produits">
+  <button
+    type="button"
+    className="bouton-reorganisation"
+    onClick={() => {
+      setModeReorganisation(!modeReorganisation)
+      setModeAffichage(false)
+    }}
+  >
+    {modeReorganisation ? '✓ Terminer' : '↕️ Réorganiser'}
+  </button>
+
+  <button
+    type="button"
+    className="bouton-reorganisation"
+    onClick={() => {
+      setModeAffichage(!modeAffichage)
+      setModeReorganisation(false)
+    }}
+  >
+    {modeAffichage ? '✓ Terminer' : '👁️ Affichage'}
+  </button>
+</div>
+
       <hr />
 
       {/* =========================
