@@ -93,7 +93,6 @@ useEffect(() => {
   }
 }, [])
 
-
 const paiementEnCours = useRef(false)
 const [paiementEnregistrement, setPaiementEnregistrement] = useState(false)
 const clePaiementActuelle = useRef(null)
@@ -145,9 +144,10 @@ useEffect(() => {
     }
 
     const { data: commandes, error: erreurCommandes } =
-      await supabase
-        .from('commandes')
-        .select('*')
+  await supabase
+    .from('commandes')
+    .select('*')
+    .order('numero', { ascending: true })
 
     if (erreurCommandes) {
       console.error(
@@ -162,12 +162,15 @@ const historique = (evenements || []).map(
   (evenement) => ({
     ...evenement,
     commandes: (commandes || [])
-      .filter(
-        (commande) =>
-          String(commande.evenement_id) ===
-          String(evenement.id)
-      )
-      .map((commande) => ({
+  .filter(
+    (commande) =>
+      String(commande.evenement_id) ===
+      String(evenement.id)
+  )
+  .sort(
+    (a, b) => Number(a.numero) - Number(b.numero)
+  )
+  .map((commande) => ({
         id: commande.id,
         evenementId: commande.evenement_id,
         numero: commande.numero,
@@ -286,7 +289,11 @@ useEffect(() => {
 
               
 const commandesEvenement =
-  (data || []).map((commande) => ({
+  (data || [])
+    .sort(
+      (a, b) => Number(a.numero) - Number(b.numero)
+    )
+    .map((commande) => ({
     id: commande.id,
     evenementId: commande.evenement_id,
     numero: commande.numero,
@@ -405,8 +412,9 @@ const commandesEvenement =
 useEffect(() => {
   const chargerCommandes = async () => {
     const { data, error } = await supabase
-      .from('commandes')
-      .select('*')
+  .from('commandes')
+  .select('*')
+  .order('numero', { ascending: true })
 
     if (error) {
       console.error(
@@ -429,7 +437,11 @@ useEffect(() => {
       })
     )
 
-setCommandes(commandesSupabase)
+setCommandes(
+  commandesSupabase.sort(
+    (a, b) => Number(a.numero) - Number(b.numero)
+  )
+)
 
     console.log(
       'Commandes chargées depuis Supabase :',
@@ -494,10 +506,19 @@ const nouvelleCommande = {
           if (payload.eventType === 'UPDATE') {
             return anciennesCommandes.map(
               (ancienneCommande) =>
-                ancienneCommande.id ===
-                nouvelleCommande.id
+                String(ancienneCommande.id) ===
+                String(nouvelleCommande.id)
                   ? nouvelleCommande
                   : ancienneCommande
+            )
+          }
+
+          // Commande supprimée
+          if (payload.eventType === 'DELETE') {
+            return anciennesCommandes.filter(
+              (ancienneCommande) =>
+                String(ancienneCommande.id) !==
+                String(payload.old.id)
             )
           }
 
@@ -664,6 +685,10 @@ const supplementRealtime = {
   const [creationEnCours, setCreationEnCours] =
   useState(false)
 const [commandes, setCommandes] = useState([])
+const [commandeEnModification, setCommandeEnModification] =
+  useState(null)
+const [articlesEnModification, setArticlesEnModification] =
+  useState([])
 const [prochainTicket, setProchainTicket] = useState(null)
 const [historiqueEvenements, setHistoriqueEvenements] =
   useState([])
@@ -1466,11 +1491,15 @@ const supprimerProduit = (id) => {
   0
 )
 
-const commandesEvenement = commandes.filter(
-  (item) =>
-    String(item.evenementId) ===
-    String(evenement?.id)
-)
+const commandesEvenement = commandes
+  .filter(
+    (item) =>
+      String(item.evenementId) ===
+      String(evenement?.id)
+  )
+  .sort(
+    (a, b) => Number(a.numero) - Number(b.numero)
+  )
 const totalEvenement = commandesEvenement.reduce(
   (somme, commande) =>
     somme + Number(commande.total),
@@ -1713,6 +1742,93 @@ if (error) {
   )
 }
 
+
+
+const supprimerCommande = async (commande) => {
+  const confirmation = window.confirm(
+    `Attention : veux-tu vraiment supprimer la commande #${commande.numero} (ticket ${commande.numeroTicket ?? '—'}) ? Cette action est définitive.`
+  )
+
+  if (!confirmation) return
+
+const { data, error } = await supabase
+  .from('commandes')
+  .delete()
+  .eq('id', commande.id)
+  .select('id')
+
+  if (error) {
+    console.error('ERREUR SUPPRESSION COMMANDE :', error.message)
+    window.alert('La suppression a échoué. Vérifie la console.')
+    return
+  }
+
+  setCommandes((anciennesCommandes) =>
+    anciennesCommandes.filter(
+      (ancienneCommande) =>
+        String(ancienneCommande.id) !== String(commande.id)
+    )
+  )
+}
+
+
+
+const modifierCommande = async () => {
+  if (!commandeEnModification) return
+
+  if (articlesEnModification.length === 0) {
+    console.error(
+      'Impossible d’enregistrer une commande vide. Utilise la suppression pour supprimer toute la commande.'
+    )
+    return
+  }
+
+  const nouveauTotal = articlesEnModification.reduce(
+    (somme, article) =>
+      somme + Number(article.prix) * Number(article.quantite),
+    0
+  )
+
+  const { data, error } = await supabase
+    .from('commandes')
+    .update({
+      articles: articlesEnModification,
+      total: nouveauTotal,
+    })
+    .eq('id', commandeEnModification.id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error(
+      'ERREUR MODIFICATION COMMANDE :',
+      error.message
+    )
+    return
+  }
+
+  const commandeActualisee = {
+    id: data.id,
+    evenementId: data.evenement_id,
+    numero: data.numero,
+    numeroTicket: data.numero_ticket,
+    articles: data.articles,
+    total: data.total,
+    modePaiement: data.mode_paiement,
+    statut: data.statut,
+  }
+
+  setCommandes((anciennesCommandes) =>
+    anciennesCommandes.map((commande) =>
+      String(commande.id) === String(commandeActualisee.id)
+        ? commandeActualisee
+        : commande
+    )
+  )
+
+  setCommandeEnModification(null)
+  setArticlesEnModification([])
+}
 
 const produitsAffiches = menu.filter(
   (produit) =>
@@ -2076,14 +2192,16 @@ return (
 
             <div className="entete-commande-historique">
 
-              <div className="infos-ticket-historique">
+
+<div className="infos-commande-historique">
   <span className="ticket-historique">
-   Ticket : {commande.numeroTicket ?? '—'}
+    Ticket : {commande.numeroTicket ?? '—'}
   </span>
   <strong>
     Commande #{commande.numero}
   </strong>
 </div>
+
 
               <span>
                 {commande.total.toFixed(2)} $
@@ -2211,8 +2329,8 @@ return (
         ) : (
           <div className="liste-historique">
 
-            {historiqueEvenements
-              .filter((ancienEvenement) => {
+            {[...historiqueEvenements]
+  .filter((ancienEvenement) => {
                 const recherche =
                   rechercheHistorique.toLowerCase().trim()
 
@@ -2228,8 +2346,7 @@ return (
                     dateRechercheHistorique
 
                 return correspondNom && correspondDate
-              })
-.reverse()
+})
 .map((ancienEvenement) => {
 
                 const total =
@@ -2706,19 +2823,67 @@ onClick={() => {
             key={commande.id}
           >
 
-            <div className="entete-commande-historique">
+            
+<div className="entete-commande-historique">
 
-                            <strong>
-                Ticket : {commande.numeroTicket ?? '—'}
-                {' · '}
-                Commande #{commande.numero}
-              </strong>
+  
+<div className="infos-ticket-historique">
+  <span className="ticket-historique">
+    Ticket : {commande.numeroTicket ?? '—'}
+  </span>
+  <strong>
+    Commande #{commande.numero}
+  </strong>
+</div>
 
-              <span>
-                {Number(commande.total).toFixed(2)} $
-              </span>
 
-            </div>
+  <div className="actions-commande">
+
+  <div className="boutons-actions-commande">
+
+
+<button
+  type="button"
+  title="Modifier la commande"
+  className="bouton-action-commande"
+  aria-label="Modifier la commande"
+  onClick={() => {
+    console.log("CHARGEMENT DE LA COMMANDE", commande)
+
+    setCommandeEnModification(commande)
+
+    setCommandesEnCours((anciensPaniers) => ({
+      ...anciensPaniers,
+      [evenement.id]: commande.articles.map((article) => ({
+        ...article,
+      })),
+    }))
+
+    setAccueil(false)
+    setCuisine(false)
+    setHistorique(false)
+    setHistoriqueCommandesActif(false)
+    setAdmin(false)
+  }}
+>
+  ✏️
+</button>
+
+
+
+<button
+  type="button"
+  className="bouton-action-commande bouton-supprimer-commande"
+  title="Supprimer la commande"
+  aria-label="Supprimer la commande"
+  onClick={() => supprimerCommande(commande)}
+>
+  🗑️
+</button>
+  </div>
+  </div>
+</div>
+
 
             <div className="details-commande-historique">
 
@@ -2902,9 +3067,12 @@ onClick={() => {
     🗑️
   </button>
 </div>
-{prochainTicket !== null && (
+
+{(commandeEnModification?.numeroTicket ?? prochainTicket) !== null && (
   <div className="ticket-panier">
-    Ticket : <strong>{prochainTicket}</strong>
+    Ticket : <strong>
+      {commandeEnModification?.numeroTicket ?? prochainTicket}
+    </strong>
   </div>
 )}
               <div className="articles">
@@ -3007,7 +3175,9 @@ onClick={() => {
 
 <div
   ref={actionsPanierRef}
-  className="actions-panier panier-fixe-mobile"
+  className={`actions-panier panier-fixe-mobile ${
+  recapVisible ? 'recap-visible' : ''
+}`}
   data-recap-visible={String(recapVisible)}
   
 >
@@ -3027,17 +3197,76 @@ onClick={() => {
   </div>
 
 
-  <button
+
+<button
   className="bouton-payer"
-  onClick={() => {
-    if (panierActuel.length > 0) {
-      setPaiement(true)
+  onClick={async () => {
+    if (panierActuel.length === 0) return
+
+    if (commandeEnModification) {
+      const nouveauTotal = panierActuel.reduce(
+        (somme, article) =>
+          somme + Number(article.prix) * Number(article.quantite),
+        0
+      )
+
+      const { data, error } = await supabase
+        .from('commandes')
+        .update({
+          articles: panierActuel,
+          total: nouveauTotal,
+        })
+        .eq('id', commandeEnModification.id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error(
+          'Erreur lors de la modification de la commande :',
+          error
+        )
+        alert('Impossible d’enregistrer les modifications.')
+        return
+      }
+
+      const commandeMiseAJour = {
+        id: data.id,
+        evenementId: data.evenement_id,
+        numero: data.numero,
+        numeroTicket: data.numero_ticket,
+        articles: data.articles,
+        total: data.total,
+        modePaiement: data.mode_paiement,
+        statut: data.statut,
+      }
+
+      setCommandes((anciennesCommandes) =>
+        anciennesCommandes.map((commande) =>
+          String(commande.id) === String(commandeMiseAJour.id)
+            ? commandeMiseAJour
+            : commande
+        )
+      )
+
+      setCommandesEnCours((anciensPaniers) => ({
+        ...anciensPaniers,
+        [evenement.id]: [],
+      }))
+
+      setCommandeEnModification(null)
+      alert('Modifications enregistrées !')
+      return
     }
+
+    setPaiement(true)
   }}
   disabled={panierActuel.length === 0}
 >
-  💳 PAYER
+  {commandeEnModification
+    ? '💾 ENREGISTRER'
+    : '💳 PAYER'}
 </button>
+
 
 </div>
 
@@ -3317,6 +3546,7 @@ setHistoriqueCommandesActif(false)
 
       </>
     )}
+
 
      {produitPersonnalise && (
       <PersonnaliserProduits
