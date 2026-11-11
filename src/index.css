@@ -2598,3 +2598,562 @@ justify-content: center;
     position: static;
   }
 }
+/* =========================
+   GRAPHIQUES HORAIRES
+========================= */
+
+.graphiques-horaires {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 25px;
+  margin-top: 25px;
+}
+
+.graphique-horaire {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  min-width: 0;
+}
+
+.graphique-horaire h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.barre-horaire {
+  display: grid;
+  grid-template-columns: 35px minmax(30px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.heure-horaire {
+  font-size: 13px;
+  color: #555;
+}
+
+.fond-barre-horaire {
+  height: 14px;
+  background: #f0f0f0;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.remplissage-barre-horaire {
+  height: 100%;
+  border-radius: 20px;
+  min-width: 3px;
+}
+
+.remplissage-barre-horaire.commandes {
+  background: #e9a0b0;
+}
+
+.remplissage-barre-horaire.chiffre-affaires {
+  background: #8bb9a5;
+}
+
+.barre-horaire strong {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Affichage mobile */
+@media (max-width: 700px) {
+  .graphiques-horaires {
+    grid-template-columns: 1fr;
+  }
+}
+/* =========================
+   GRAPHIQUES EN COURBES
+========================= */
+
+.courbe-horaire {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.graphique-svg {
+  display: block;
+  width: 100%;
+  min-width: 600px;
+  height: auto;
+  overflow: visible;
+}
+
+.axe-graphique {
+  stroke: #777;
+  stroke-width: 1.5;
+}
+
+.grille-graphique {
+  stroke: #e5e5e5;
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.texte-graphique {
+  font-size: 12px;
+  fill: #666;
+}
+
+.valeur-graphique {
+  font-size: 12px;
+  font-weight: bold;
+  fill: #333;
+}
+
+.ligne-commandes {
+  stroke: #e9a0b0;
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.point-commandes {
+  fill: #e9a0b0;
+  stroke: white;
+  stroke-width: 2;
+}
+
+.ligne-chiffre-affaires {
+  stroke: #8bb9a5;
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.point-chiffre-affaires {
+  fill: #8bb9a5;
+  stroke: white;
+  stroke-width: 2;
+}
+/* =========================
+   BALAYAGE DES GRAPHIQUES DE COMMANDES
+========================= */
+
+.conteneur-vues-horaires {
+  display: flex;
+  width: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.conteneur-vues-horaires::-webkit-scrollbar {
+  display: none;
+}
+
+.vue-horaire-slide {
+  flex: 0 0 100%;
+  min-width: 100%;
+  scroll-snap-align: start;
+}
+
+/* Évite le défilement horizontal imbriqué
+   dans le graphique détaillé des commandes */
+.graphique-horaire:first-child .courbe-horaire {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Indicateurs des vues horaires */
+
+.indicateurs-vues-horaires {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.indicateurs-vues-horaires span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d5d5d5;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.indicateurs-vues-horaires span.actif {
+  background: #e9a0b0;
+  transform: scale(1.3);
+}
+/* Camembert des produits vendus */
+
+.camembert-produits-historique {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.contenu-camembert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+  flex-wrap: nowrap;
+}
+
+.graphique-camembert {
+  width: 400px;
+  height: 400px;
+  flex-shrink: 0;
+}
+
+.legende-camembert {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ligne-legende-camembert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  justify-content: flex-start;
+}
+
+.nom-legende-camembert {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.quantite-legende-camembert {
+  margin-left: 0;
+  width: 35px;
+  text-align: right;
+}
+
+.pourcentage-legende-camembert {
+  margin-left: 0;
+  width: 55px;
+  text-align: right;
+}
+
+.pourcentage-legende-camembert {
+  margin-left: 4px;
+}
+
+.nom-legende-camembert {
+  flex: 1;
+}
+
+.quantite-legende-camembert,
+.pourcentage-legende-camembert {
+  white-space: nowrap;
+}
+
+.couleur-legende-camembert {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+  .contenu-camembert {
+    flex-direction: column;
+  }
+
+  .graphique-camembert {
+    order: -1;
+    width: 280px;
+    height: 280px;
+  }
+
+  .legende-camembert {
+    order: 1;
+    width: 100%;
+  }
+}
+
+.evolution-positive {
+  display: block;
+  margin-top: 6px;
+  color: #249653;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.evolution-negative {
+  display: block;
+  margin-top: 6px;
+  color: #d94343;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+
+/* =========================
+   ANALYSE GLOBALE
+========================= */
+
+.page-analyse {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.page-analyse .titre-historique {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.page-analyse .titre-historique h1 {
+  margin: 0;
+  font-size: 26px;
+}
+
+/* Boutons de période */
+
+.periodes-analyse {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+
+.periodes-analyse button {
+  flex: 1;
+  padding: 11px;
+  border: 1px solid #e2c4cb;
+  border-radius: 10px;
+  background: white;
+  color: #444;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.periodes-analyse button.active {
+  background: #e9a8b8;
+  color: #fff;
+  border-color: #e9a8b8;
+}
+
+/* Cartes indicateurs */
+
+.indicateurs-analyse {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.carte-indicateur-analyse {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 18px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
+  border: 1px solid #eee;
+}
+
+.carte-indicateur-analyse > span {
+  font-size: 14px;
+  color: #666;
+  font-weight: 600;
+}
+
+.carte-indicateur-analyse > strong {
+  font-size: 25px;
+  color: #292929;
+}
+
+@media (max-width: 700px) {
+  .indicateurs-analyse {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .carte-indicateur-analyse {
+    padding: 13px;
+  }
+
+  .carte-indicateur-analyse > strong {
+    font-size: 21px;
+  }
+
+  .page-analyse {
+    padding: 12px;
+  }
+}
+
+/* =========================
+   BLOCS STATISTIQUES
+========================= */
+
+.top-produits-analyse,
+.paiements-analyse,
+.commandes-jour-analyse,
+.panier-jour-analyse,
+.graphique-ca-analyse {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.page-analyse h2 {
+  font-size: 19px;
+  margin: 0 0 18px;
+  color: #333;
+}
+
+/* Top 5 */
+
+.liste-top-produits {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ligne-top-produit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px;
+  background: #faf6f7;
+  border-radius: 9px;
+}
+
+.ligne-top-produit > span:first-child {
+  font-weight: 700;
+  color: #bd8291;
+  min-width: 22px;
+}
+
+.ligne-top-produit strong {
+  flex: 1;
+}
+
+.ligne-top-produit > span:last-child {
+  color: #777;
+  font-size: 14px;
+}
+
+/* Paiements */
+
+.paiements-analyse > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 4px;
+  border-bottom: 1px solid #eee;
+}
+
+.paiements-analyse > div:last-child {
+  border-bottom: none;
+}
+
+/* Listes de statistiques */
+
+.liste-commandes-jour,
+.liste-panier-jour,
+.liste-graphique-ca {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ligne-commandes-jour,
+.ligne-panier-jour,
+.ligne-graphique-ca {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #faf6f7;
+  border-radius: 9px;
+}
+
+.ligne-commandes-jour strong,
+.ligne-panier-jour strong,
+.ligne-graphique-ca strong {
+  color: #333;
+}
+
+.ligne-commandes-jour span,
+.ligne-panier-jour span {
+  color: #666;
+}
+
+.ligne-graphique-ca strong {
+  color: #bd8291;
+}
+
+@media (max-width: 500px) {
+  .top-produits-analyse,
+  .paiements-analyse,
+  .commandes-jour-analyse,
+  .panier-jour-analyse,
+  .graphique-ca-analyse {
+    padding: 14px;
+  }
+
+  .page-analyse h2 {
+    font-size: 17px;
+  }
+}
+
+/* Alignement des chiffres d'affaires */
+
+.ligne-graphique-ca {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.entete-barre-ca {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 16px;
+}
+
+.entete-barre-ca span {
+  flex: 1;
+}
+
+.entete-barre-ca strong {
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.entete-barre-ca span {
+  font-weight: 700;
+  color: #333;
+}
+
+.entete-barre-ca strong {
+  color: #333;
+  font-weight: 400;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.bouton-accueil.analyse {
+  background-color: #add1a5;
+  border-color: #78946b;
+  color: rgb(0, 0, 0);
+}

@@ -2,12 +2,13 @@ import { useState } from 'react'
 const couleursCrepes = [
   { nom: 'Rose pastel', valeur: '#FDE9E0' },
   { nom: 'Marron clair', valeur: '#d0863bc5' },
-  { nom: 'Marron foncé', valeur: '#8B5A3C' },
+  { nom: 'Marron foncé', valeur: '#6c442b' },
   { nom: 'Jaune pastel', valeur: '#FBF2B7' },
   { nom: 'Orange pastel', valeur: '#ff7b00b0' },
   { nom: 'Blanc', valeur: '#FFFFFF' },
   { nom: 'Noir', valeur: '#2d2d2d' },
   { nom: 'Marron orange', valeur: '#a3612f' },
+  { nom: 'Vert', valeur: '#c6e5c2',},
 ]
 function Admin({
   produits,

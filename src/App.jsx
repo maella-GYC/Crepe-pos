@@ -43,6 +43,10 @@ const couleursCrepes = [
     nom: 'Marron orange',
     valeur: '#C98F62',
   },
+  {
+    nom: 'Vert',
+    valeur: '#b6d3b2',
+  },
 ]
 function App() {
   console.log('APP.jsx CHARGÉ')
@@ -53,6 +57,7 @@ const zoneCommandeRef = useRef(null)
 const [hauteurActionsPanier, setHauteurActionsPanier] = useState(0)
 const [largeurZoneCommande, setLargeurZoneCommande] = useState(0)
 const [gaucheZoneCommande, setGaucheZoneCommande] = useState(0)
+const [vueHoraireActive, setVueHoraireActive] = useState(0)
 const [recapVisible, setRecapVisible] = useState(false)
 console.log('Récapitulatif visible :', recapVisible)
 
@@ -171,15 +176,18 @@ const historique = (evenements || []).map(
     (a, b) => Number(a.numero) - Number(b.numero)
   )
   .map((commande) => ({
-        id: commande.id,
-        evenementId: commande.evenement_id,
-        numero: commande.numero,
-        numeroTicket: commande.numero_ticket,
-        articles: commande.articles,
-        total: commande.total,
-        modePaiement: commande.mode_paiement,
-        statut: commande.statut,
-      })),
+  id: commande.id,
+  evenementId: commande.evenement_id,
+  numero: commande.numero,
+  numeroTicket: commande.numero_ticket,
+  created_at: commande.created_at,
+  articles: commande.articles,
+  total: commande.total,
+  modePaiement: commande.mode_paiement,
+  montantEspeces: commande.montant_especes,
+  montantCarte: commande.montant_carte,
+  statut: commande.statut,
+})),
   })
 )
 
@@ -294,15 +302,18 @@ const commandesEvenement =
       (a, b) => Number(a.numero) - Number(b.numero)
     )
     .map((commande) => ({
-    id: commande.id,
-    evenementId: commande.evenement_id,
-    numero: commande.numero,
-    numeroTicket: commande.numero_ticket,
-    articles: commande.articles,
-    total: commande.total,
-    modePaiement: commande.mode_paiement,
-    statut: commande.statut,
-  }))
+  id: commande.id,
+  evenementId: commande.evenement_id,
+  numero: commande.numero,
+  numeroTicket: commande.numero_ticket,
+  created_at: commande.created_at,
+  articles: commande.articles,
+  total: commande.total,
+  modePaiement: commande.mode_paiement,
+  montantEspeces: commande.montant_especes,
+  montantCarte: commande.montant_carte,
+  statut: commande.statut,
+}))
 
 
               setHistoriqueEvenements(
@@ -425,17 +436,20 @@ useEffect(() => {
     }
 
     const commandesSupabase = (data || []).map(
-      (commande) => ({
-        id: commande.id,
-        evenementId: commande.evenement_id,
-        numero: commande.numero,
-        numeroTicket: commande.numero_ticket,
-        articles: commande.articles,
-        total: commande.total,
-        modePaiement: commande.mode_paiement,
-        statut: commande.statut,
-      })
-    )
+  (commande) => ({
+    id: commande.id,
+    evenementId: commande.evenement_id,
+    numero: commande.numero,
+    numeroTicket: commande.numero_ticket,
+    created_at: commande.created_at,
+    articles: commande.articles,
+    total: commande.total,
+    modePaiement: commande.mode_paiement,
+    montantEspeces: commande.montant_especes,
+    montantCarte: commande.montant_carte,
+    statut: commande.statut,
+  })
+)
 
 setCommandes(
   commandesSupabase.sort(
@@ -474,9 +488,12 @@ const nouvelleCommande = {
   evenementId: commande.evenement_id,
   numero: commande.numero,
   numeroTicket: commande.numero_ticket,
+  created_at: commande.created_at,
   articles: commande.articles,
   total: commande.total,
   modePaiement: commande.mode_paiement,
+  montantEspeces: commande.montant_especes,
+  montantCarte: commande.montant_carte,
   statut: commande.statut,
 }
 
@@ -740,7 +757,11 @@ console.log('RÉSULTAT CHARGEMENT ÉVÉNEMENTS :', {
 
 const pageSauvegardee =
   localStorage.getItem('pageActuelle')
-
+if (pageSauvegardee === 'analyse') {
+  setAnalyse(true)
+} else {
+  setAnalyse(false)
+}
 if (
   pageSauvegardee === 'evenements-en-cours' ||
   pageSauvegardee === 'nouvel-evenement'
@@ -814,7 +835,355 @@ const [cuisine, setCuisine] = useState(
 const [historique, setHistorique] = useState(
   pageSauvegardee === 'historique'
 )
+const [analyse, setAnalyse] = useState(
+  localStorage.getItem('pageActuelle') === 'analyse'
+)
+const [periodeAnalyse, setPeriodeAnalyse] = useState('semaine')
+useEffect(() => {
+  if (!analyse) return
 
+  const chargerCommandesAnalyse = async () => {
+    const { data, error } = await supabase
+      .from('commandes')
+      .select('*')
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error(
+        'Erreur lors du chargement des commandes pour l’analyse :',
+        error
+      )
+      return
+    }
+
+    setCommandesAnalyse(data || [])
+    console.log('COMMANDES ANALYSE :', data)
+    console.log('EXEMPLE COMMANDE :', data?.[0])
+    console.log(
+  'ARTICLES EXEMPLE :',
+  JSON.stringify(data?.[0]?.articles, null, 2)
+)
+    console.log(
+  'STATUTS DES COMMANDES :',
+  [...new Set(data.map(commande => commande.statut))]
+)
+  }
+
+  chargerCommandesAnalyse()
+}, [analyse])
+const [commandesAnalyse, setCommandesAnalyse] = useState([])
+const commandesPayeesAnalyse = commandesAnalyse.filter(
+  commande => commande.statut === 'Terminée'
+)
+const maintenantAnalyse = new Date()
+
+const debutPeriodeAnalyse = new Date(maintenantAnalyse)
+
+if (periodeAnalyse === 'semaine') {
+  const jour = (maintenantAnalyse.getDay() + 6) % 7
+  debutPeriodeAnalyse.setDate(
+    maintenantAnalyse.getDate() - jour
+  )
+  debutPeriodeAnalyse.setHours(0, 0, 0, 0)
+
+} else if (periodeAnalyse === 'mois') {
+  debutPeriodeAnalyse.setDate(1)
+  debutPeriodeAnalyse.setHours(0, 0, 0, 0)
+
+} else if (periodeAnalyse === 'annee') {
+  debutPeriodeAnalyse.setMonth(0, 1)
+  debutPeriodeAnalyse.setHours(0, 0, 0, 0)
+}
+const debutPeriodePrecedenteAnalyse = new Date(
+  debutPeriodeAnalyse
+)
+
+if (periodeAnalyse === 'semaine') {
+  debutPeriodePrecedenteAnalyse.setDate(
+    debutPeriodePrecedenteAnalyse.getDate() - 7
+  )
+} else if (periodeAnalyse === 'mois') {
+  debutPeriodePrecedenteAnalyse.setMonth(
+    debutPeriodePrecedenteAnalyse.getMonth() - 1
+  )
+} else if (periodeAnalyse === 'annee') {
+  debutPeriodePrecedenteAnalyse.setFullYear(
+    debutPeriodePrecedenteAnalyse.getFullYear() - 1
+  )
+}
+
+const dureePeriodeEcouleeAnalyse =
+  maintenantAnalyse.getTime() - debutPeriodeAnalyse.getTime()
+
+const finPeriodePrecedenteAnalyse = new Date(
+  debutPeriodePrecedenteAnalyse.getTime() +
+  dureePeriodeEcouleeAnalyse
+)
+const commandesPeriodeAnalyse = commandesPayeesAnalyse.filter(
+  commande => {
+    const dateCommande = new Date(commande.created_at)
+
+    return (
+      dateCommande >= debutPeriodeAnalyse &&
+      dateCommande <= maintenantAnalyse
+    )
+  }
+)
+const commandesPeriodePrecedenteAnalyse =
+  commandesPayeesAnalyse.filter(commande => {
+    const dateCommande = new Date(commande.created_at)
+
+    return (
+      dateCommande >= debutPeriodePrecedenteAnalyse &&
+      dateCommande < finPeriodePrecedenteAnalyse
+    )
+  })
+const chiffreAffairesPrecedentAnalyse =
+  commandesPeriodePrecedenteAnalyse.reduce(
+    (total, commande) =>
+      total + Number(commande.total || 0),
+    0
+  )
+
+const nombreCommandesPrecedentAnalyse =
+  commandesPeriodePrecedenteAnalyse.length
+
+const panierMoyenPrecedentAnalyse =
+  nombreCommandesPrecedentAnalyse > 0
+    ? chiffreAffairesPrecedentAnalyse /
+      nombreCommandesPrecedentAnalyse
+    : 0
+
+const commandesParJourAnalyse = (() => {
+  const jours = {}
+
+  commandesPeriodeAnalyse.forEach(commande => {
+    const date = new Date(commande.created_at)
+
+    const cle = [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0'),
+    ].join('-')
+
+    if (!jours[cle]) {
+      jours[cle] = {
+        date: cle,
+        nombreCommandes: 0,
+        chiffreAffaires: 0,
+      }
+    }
+
+    jours[cle].nombreCommandes += 1
+    jours[cle].chiffreAffaires += Number(commande.total || 0)
+  })
+
+  return Object.values(jours).sort(
+    (a, b) => a.date.localeCompare(b.date)
+  )
+})()
+const panierMoyenParJourAnalyse = commandesParJourAnalyse.map(
+  jour => ({
+    ...jour,
+    panierMoyen:
+      jour.nombreCommandes > 0
+        ? jour.chiffreAffaires / jour.nombreCommandes
+        : 0,
+  })
+)
+const graphiqueCAAnalyse = (() => {
+  if (periodeAnalyse === 'semaine') {
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(debutPeriodeAnalyse)
+      date.setDate(date.getDate() + index)
+
+      const cle = [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0'),
+      ].join('-')
+
+      const jour = commandesParJourAnalyse.find(
+        jour => jour.date === cle
+      )
+
+      return {
+        periode: cle,
+        chiffreAffaires: jour?.chiffreAffaires || 0,
+      }
+    })
+  }
+
+  if (periodeAnalyse === 'mois') {
+    const semaines = {}
+    const premierJour = new Date(debutPeriodeAnalyse)
+    const nombreJours = maintenantAnalyse.getDate()
+
+    for (let i = 0; i < nombreJours; i++) {
+      const date = new Date(premierJour)
+      date.setDate(premierJour.getDate() + i)
+
+      const debutSemaine = new Date(date)
+      debutSemaine.setDate(
+        date.getDate() - ((date.getDay() + 6) % 7)
+      )
+
+      const cle = [
+        debutSemaine.getFullYear(),
+        String(debutSemaine.getMonth() + 1).padStart(2, '0'),
+        String(debutSemaine.getDate()).padStart(2, '0'),
+      ].join('-')
+
+      if (!semaines[cle]) {
+        semaines[cle] = {
+          periode: cle,
+          chiffreAffaires: 0,
+        }
+      }
+
+      const jour = commandesParJourAnalyse.find(
+        jour => jour.date === [
+          date.getFullYear(),
+          String(date.getMonth() + 1).padStart(2, '0'),
+          String(date.getDate()).padStart(2, '0'),
+        ].join('-')
+      )
+
+      semaines[cle].chiffreAffaires +=
+        jour?.chiffreAffaires || 0
+    }
+
+    return Object.values(semaines)
+  }
+
+  if (periodeAnalyse === 'annee') {
+    return Array.from({ length: 12 }, (_, index) => {
+      const date = new Date(
+        maintenantAnalyse.getFullYear(),
+        index,
+        1
+      )
+
+      const cle = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, '0')}`
+
+      const chiffreAffaires = commandesPeriodeAnalyse
+        .filter(commande => {
+          const dateCommande = new Date(commande.created_at)
+
+          return (
+            dateCommande.getFullYear() === date.getFullYear() &&
+            dateCommande.getMonth() === date.getMonth()
+          )
+        })
+        .reduce(
+          (total, commande) =>
+            total + Number(commande.total || 0),
+          0
+        )
+
+      return {
+        periode: cle,
+        chiffreAffaires,
+      }
+    })
+  }
+
+  return []
+})()
+
+const graphiqueCAAfficheAnalyse = (() => {
+  if (periodeAnalyse !== 'annee') return graphiqueCAAnalyse
+
+  const premierMoisAvecVentes = graphiqueCAAnalyse.findIndex(
+    jour => jour.chiffreAffaires > 0
+  )
+
+  return premierMoisAvecVentes === -1
+    ? graphiqueCAAnalyse
+    : graphiqueCAAnalyse.slice(premierMoisAvecVentes)
+})()
+
+const chiffreAffairesAnalyse = commandesPeriodeAnalyse.reduce(
+  (total, commande) => total + Number(commande.total || 0),
+  0
+)
+const nombreCommandesAnalyse = commandesPeriodeAnalyse.length
+const panierMoyenAnalyse =
+  nombreCommandesAnalyse > 0
+    ? chiffreAffairesAnalyse / nombreCommandesAnalyse
+    : 0
+const quantiteProduitsAnalyse = commandesPeriodeAnalyse.reduce(
+  (total, commande) => {
+    return (
+      total +
+      (commande.articles || []).reduce(
+        (sousTotal, article) =>
+          sousTotal + Number(article.quantite || 0),
+        0
+      )
+    )
+  },
+  0
+)
+const calculerEvolutionAnalyse = (actuel, precedent) => {
+  if (precedent === 0) {
+    return actuel > 0 ? 100 : 0
+  }
+
+  return ((actuel - precedent) / precedent) * 100
+}
+
+const evolutionCAAnalyse = calculerEvolutionAnalyse(
+  chiffreAffairesAnalyse,
+  chiffreAffairesPrecedentAnalyse
+)
+
+const evolutionCommandesAnalyse = calculerEvolutionAnalyse(
+  nombreCommandesAnalyse,
+  nombreCommandesPrecedentAnalyse
+)
+
+const evolutionPanierAnalyse = calculerEvolutionAnalyse(
+  panierMoyenAnalyse,
+  panierMoyenPrecedentAnalyse
+)
+const chiffreAffairesCarteAnalyse =
+  commandesPeriodeAnalyse
+    .filter(commande => commande.mode_paiement === 'Carte')
+    .reduce(
+      (total, commande) => total + Number(commande.total || 0),
+      0
+    )
+
+const chiffreAffairesEspecesAnalyse =
+  commandesPeriodeAnalyse
+    .filter(commande => commande.mode_paiement === 'Espèces')
+    .reduce(
+      (total, commande) => total + Number(commande.total || 0),
+      0
+    )
+const classementProduitsAnalyse = (() => {
+  const produits = {}
+
+  commandesPeriodeAnalyse.forEach(commande => {
+    ;(commande.articles || []).forEach(article => {
+      const nom = article.nom
+
+      if (!produits[nom]) {
+        produits[nom] = 0
+      }
+
+      produits[nom] += Number(article.quantite || 0)
+    })
+  })
+
+  return Object.entries(produits)
+    .map(([nom, quantite]) => ({ nom, quantite }))
+    .sort((a, b) => b.quantite - a.quantite)
+    .slice(0, 5)
+})()
 const [accueil, setAccueil] = useState(
   pageSauvegardee === 'historique' ||
   pageSauvegardee === 'nouvel-evenement' ||
@@ -834,6 +1203,8 @@ const [historiqueCommandesActif, setHistoriqueCommandesActif] =
     page = 'cuisine'
   } else if (historique) {
     page = 'historique'
+  } else if (analyse) {
+  page = 'analyse'
   } else if (historiqueCommandesActif) {
     page = 'commandes'
   } else if (accueil && creationEvenement) {
@@ -893,6 +1264,7 @@ console.log('ÉVÉNEMENT POUR LE TICKET :', evenement)
 const [paiement, setPaiement] = useState(false)
 const [modePaiement, setModePaiement] = useState('')
 const [montantRecu, setMontantRecu] = useState('')
+const [completerEnCarte, setCompleterEnCarte] = useState(false)
 const [produitPersonnalise, setProduitPersonnalise] = useState(null)
 const [rechercheHistorique, setRechercheHistorique] = useState('')
 const [dateRechercheHistorique, setDateRechercheHistorique] = useState('')
@@ -1500,27 +1872,38 @@ const commandesEvenement = commandes
   .sort(
     (a, b) => Number(a.numero) - Number(b.numero)
   )
+
 const totalEvenement = commandesEvenement.reduce(
   (somme, commande) =>
     somme + Number(commande.total),
   0
 )
 
-const totalCarte = commandesEvenement
-  .filter((commande) => commande.modePaiement === 'Carte')
-  .reduce(
-    (somme, commande) =>
-      somme + Number(commande.total),
-    0
-  )
+const totalCarte = commandesEvenement.reduce(
+  (somme, commande) =>
+    somme +
+    (
+      commande.montantCarte != null
+        ? Number(commande.montantCarte)
+        : commande.modePaiement === 'Carte'
+          ? Number(commande.total)
+          : 0
+    ),
+  0
+)
 
-const totalCash = commandesEvenement
-  .filter((commande) => commande.modePaiement === 'Espèces')
-  .reduce(
-    (somme, commande) =>
-      somme + Number(commande.total),
-    0
-  )
+const totalCash = commandesEvenement.reduce(
+  (somme, commande) =>
+    somme +
+    (
+      commande.montantEspeces != null
+        ? Number(commande.montantEspeces)
+        : commande.modePaiement === 'Espèces'
+          ? Number(commande.total)
+          : 0
+    ),
+  0
+)
 
 const totalSweet = commandesEvenement.reduce(
   (somme, commande) =>
@@ -1557,25 +1940,55 @@ const totalSavoury = commandesEvenement.reduce(
   // PAIEMENT
   // =========================
 
- 
 const enregistrerPaiement = async () => {
   if (paiementEnCours.current) return
 
   if (!modePaiement) return
 
+  const especesSaisies = Number(montantRecu)
+
+  // Vérification du paiement en espèces uniquement
   if (
     modePaiement === 'Espèces' &&
-    Number(montantRecu) < total
+    !completerEnCarte &&
+    especesSaisies < total
   ) {
     return
   }
 
+  // Vérification du paiement mixte
+  if (
+    modePaiement === 'Espèces' &&
+    completerEnCarte &&
+    (
+      !Number.isFinite(especesSaisies) ||
+      especesSaisies <= 0 ||
+      especesSaisies > total
+    )
+  ) {
+    return
+  }
+
+  // Répartition des montants
+  const montantEspeces =
+    modePaiement === 'Carte'
+      ? 0
+      : completerEnCarte
+        ? especesSaisies
+        : total
+
+  const montantCarte =
+    modePaiement === 'Carte'
+      ? total
+      : completerEnCarte
+        ? total - montantEspeces
+        : 0
+
   paiementEnCours.current = true
-setPaiementEnregistrement(true)
+  setPaiementEnregistrement(true)
 
   if (!clePaiementActuelle.current) {
-    clePaiementActuelle.current =
-      crypto.randomUUID()
+    clePaiementActuelle.current = crypto.randomUUID()
   }
 
   const clePaiement = clePaiementActuelle.current
@@ -1589,17 +2002,19 @@ setPaiementEnregistrement(true)
       ).length + 1
     ).padStart(3, '0')
 
-const { data, error } = await supabase
-  .rpc('enregistrer_commande_avec_ticket', {
-    p_evenement_id: evenement.id,
-    p_numero: numeroCommande,
-    p_articles: panierActuel,
-    p_total: total,
-    p_mode_paiement: modePaiement,
-    p_cle_paiement: clePaiement,
-  })
+    const { data, error } = await supabase
+      .rpc('enregistrer_commande_avec_ticket', {
+        p_evenement_id: evenement.id,
+        p_numero: numeroCommande,
+        p_articles: panierActuel,
+        p_total: total,
+        p_mode_paiement: modePaiement,
+        p_cle_paiement: clePaiement,
+        p_montant_especes: montantEspeces,
+        p_montant_carte: montantCarte,
+      })
 
-let commandeEnregistree = data?.[0] ?? null
+    let commandeEnregistree = data?.[0] ?? null
 
     if (error) {
       console.error(
@@ -1607,12 +2022,14 @@ let commandeEnregistree = data?.[0] ?? null
         error
       )
 
-      const { data: commandeExistante, error: erreurRecherche } =
-        await supabase
-          .from('commandes')
-          .select('*')
-          .eq('cle_paiement', clePaiement)
-          .maybeSingle()
+      const {
+        data: commandeExistante,
+        error: erreurRecherche,
+      } = await supabase
+        .from('commandes')
+        .select('*')
+        .eq('cle_paiement', clePaiement)
+        .maybeSingle()
 
       if (erreurRecherche || !commandeExistante) {
         console.error(
@@ -1624,51 +2041,57 @@ let commandeEnregistree = data?.[0] ?? null
       commandeEnregistree = commandeExistante
     }
 
-if (!commandeEnregistree) {
-  console.error(
-    'Aucune commande retournée par Supabase.'
-  )
-  return
-}
-console.log('PAIEMENT CONFIRMÉ, ACTUALISATION DU TICKET')
-const { data: compteurActualise, error: erreurCompteur } =
-  await supabase
-    .from('compteurs_tickets')
-    .select('dernier_ticket')
-    .eq('evenement_id', evenement.id)
-    .maybeSingle()
-console.log('RÉSULTAT COMPTEUR APRÈS PAIEMENT :', {
-  compteurActualise,
-  erreurCompteur,
-  evenementId: evenement.id,
-})
-if (erreurCompteur) {
-  console.error(
-    'Erreur lors de l’actualisation du prochain ticket :',
-    erreurCompteur
-  )
-} else {
-  const dernierTicket = Number(
-    compteurActualise?.dernier_ticket ?? 0
-  )
+    if (!commandeEnregistree) {
+      console.error(
+        'Aucune commande retournée par Supabase.'
+      )
+      return
+    }
 
-  setProchainTicket((dernierTicket % 20) + 1)
-  console.log(
-  'COMPTEUR APRÈS PAIEMENT :',
-  compteurActualise?.dernier_ticket
-)
-}
+    console.log(
+      'PAIEMENT CONFIRMÉ, ACTUALISATION DU TICKET'
+    )
+
+    const {
+      data: compteurActualise,
+      error: erreurCompteur,
+    } = await supabase
+      .from('compteurs_tickets')
+      .select('dernier_ticket')
+      .eq('evenement_id', evenement.id)
+      .maybeSingle()
+
+    console.log('RÉSULTAT COMPTEUR APRÈS PAIEMENT :', {
+      compteurActualise,
+      erreurCompteur,
+      evenementId: evenement.id,
+    })
+
+    if (erreurCompteur) {
+      console.error(
+        'Erreur lors de l’actualisation du prochain ticket :',
+        erreurCompteur
+      )
+    } else {
+      const dernierTicket = Number(
+        compteurActualise?.dernier_ticket ?? 0
+      )
+
+      setProchainTicket((dernierTicket % 20) + 1)
+    }
 
     const nouvelleCommande = {
-  id: commandeEnregistree.id,
-  evenementId: commandeEnregistree.evenement_id,
-  numero: commandeEnregistree.numero,
-  numeroTicket: commandeEnregistree.numero_ticket,
-  articles: commandeEnregistree.articles,
-  total: commandeEnregistree.total,
-  modePaiement: commandeEnregistree.mode_paiement,
-  statut: commandeEnregistree.statut,
-}
+      id: commandeEnregistree.id,
+      evenementId: commandeEnregistree.evenement_id,
+      numero: commandeEnregistree.numero,
+      numeroTicket: commandeEnregistree.numero_ticket,
+      articles: commandeEnregistree.articles,
+      total: commandeEnregistree.total,
+      modePaiement: commandeEnregistree.mode_paiement,
+      montantEspeces: commandeEnregistree.montant_especes,
+      montantCarte: commandeEnregistree.montant_carte,
+      statut: commandeEnregistree.statut,
+    }
 
     setCommandes((anciennesCommandes) =>
       anciennesCommandes.some(
@@ -1690,15 +2113,17 @@ if (erreurCompteur) {
     setPaiement(false)
     setModePaiement('')
     setMontantRecu('')
+    setCompleterEnCarte(false)
+
   } catch (erreur) {
     console.error(
       'Erreur inattendue lors du paiement :',
       erreur
     )
   } finally {
-  paiementEnCours.current = false
-  setPaiementEnregistrement(false)
-}
+    paiementEnCours.current = false
+    setPaiementEnregistrement(false)
+  }
 }
 
 
@@ -1850,6 +2275,21 @@ const produitsAffiches = menu.filter(
 const commandesHistorique =
   evenementSelectionne?.commandes || []
 
+console.table(
+  commandesHistorique.map((commande) => ({
+    numero: commande.numero,
+    created_at: commande.created_at,
+  }))
+)
+
+if (commandesHistorique.length > 0) {
+  console.log(
+    'TEST DATE :',
+    new Date(commandesHistorique[0].created_at).toString(),
+    new Date(commandesHistorique[0].created_at).getHours()
+  )
+}
+
 const totalHistorique =
   commandesHistorique.reduce(
     (somme, commande) =>
@@ -1858,28 +2298,32 @@ const totalHistorique =
   )
 
 const totalCarteHistorique =
-  commandesHistorique
-    .filter(
-      (commande) =>
-        commande.modePaiement === 'Carte'
-    )
-    .reduce(
-      (somme, commande) =>
-        somme + Number(commande.total),
-      0
-    )
+  commandesHistorique.reduce(
+    (somme, commande) =>
+      somme +
+      (
+        commande.montantCarte != null
+          ? Number(commande.montantCarte)
+          : commande.modePaiement === 'Carte'
+            ? Number(commande.total)
+            : 0
+      ),
+    0
+  )
 
 const totalCashHistorique =
-  commandesHistorique
-    .filter(
-      (commande) =>
-        commande.modePaiement === 'Espèces'
-    )
-    .reduce(
-      (somme, commande) =>
-        somme + Number(commande.total),
-      0
-    )
+  commandesHistorique.reduce(
+    (somme, commande) =>
+      somme +
+      (
+        commande.montantEspeces != null
+          ? Number(commande.montantEspeces)
+          : commande.modePaiement === 'Espèces'
+            ? Number(commande.total)
+            : 0
+      ),
+    0
+  )
 
 const nombreCommandesHistorique =
   commandesHistorique.length
@@ -1948,13 +2392,143 @@ commandesHistorique.forEach((commande) => {
       article.quantite
   })
 })
-
 const produitsVendusHistorique =
   Object.entries(quantitesParProduit)
     .sort(
       ([, quantiteA], [, quantiteB]) =>
         quantiteB - quantiteA
     )
+
+// Données du camembert des produits vendus
+
+const totalProduitsVendus =
+  produitsVendusHistorique.reduce(
+    (total, [, quantite]) => total + quantite,
+    0
+  )
+
+const couleursCamembert = [
+  '#E9A0B0',
+  '#8BB9A5',
+  '#F2C879',
+  '#91A9D5',
+  '#B69AD5',
+  '#E69A6B',
+  '#8FC9CC',
+  '#D58EAA',
+  '#A5B77D',
+  '#B0A0A0',
+]
+
+let cumulPourcentage = 0
+
+const repartitionProduitsCamembert =
+  produitsVendusHistorique.map(
+    ([nom, quantite], index) => {
+      const debut = cumulPourcentage
+
+      const pourcentage =
+        totalProduitsVendus > 0
+          ? (quantite / totalProduitsVendus) * 100
+          : 0
+
+      cumulPourcentage += pourcentage
+
+      return {
+        nom,
+        quantite,
+        pourcentage,
+        debut,
+        fin: cumulPourcentage,
+        couleur:
+          couleursCamembert[
+            index % couleursCamembert.length
+          ],
+      }
+    }
+  )
+// Commandes et chiffre d'affaires par heure
+
+const statistiquesHoraires = (() => {
+  const tranches = Array.from({ length: 24 }, (_, heure) => ({
+    heure: heure * 60,
+    nombreCommandes: 0,
+    chiffreAffaires: 0,
+  }))
+
+  commandesHistorique.forEach((commande) => {
+    if (!commande.created_at) return
+
+    const date = new Date(commande.created_at)
+
+    if (isNaN(date.getTime())) return
+
+    const heure = date.getHours()
+    const tranche = tranches[heure]
+
+    tranche.nombreCommandes += 1
+    tranche.chiffreAffaires += Number(commande.total)
+  })
+
+  const premieresTranches = tranches.filter(
+    (tranche) => tranche.nombreCommandes > 0
+  )
+
+  if (premieresTranches.length === 0) return []
+
+  const premiereHeure = premieresTranches[0].heure
+  const derniereHeure =
+    premieresTranches[premieresTranches.length - 1].heure
+
+  return tranches.filter(
+    (tranche) =>
+      tranche.heure >= premiereHeure &&
+      tranche.heure <= derniereHeure
+  )
+})()
+
+// Commandes et chiffre d'affaires par tranche de 15 minutes
+
+const statistiquesQuartsHeure = (() => {
+  const tranches = Array.from({ length: 96 }, (_, index) => ({
+    heure: index * 15,
+    nombreCommandes: 0,
+    chiffreAffaires: 0,
+  }))
+
+  commandesHistorique.forEach((commande) => {
+    if (!commande.created_at) return
+
+    const date = new Date(commande.created_at)
+    if (isNaN(date.getTime())) return
+
+    const minutes =
+      date.getHours() * 60 +
+      Math.floor(date.getMinutes() / 15) * 15
+
+    const tranche = tranches[minutes / 15]
+
+    tranche.nombreCommandes += 1
+    tranche.chiffreAffaires += Number(commande.total)
+  })
+
+  const premieresTranches = tranches.filter(
+    (tranche) => tranche.nombreCommandes > 0
+  )
+
+  if (premieresTranches.length === 0) return []
+
+  const premiereHeure = premieresTranches[0].heure
+  const derniereHeure =
+    premieresTranches[premieresTranches.length - 1].heure
+
+  return tranches.filter(
+    (tranche) =>
+      tranche.heure >= premiereHeure &&
+      tranche.heure <= derniereHeure
+  )
+})()
+
 return (
   <div className="app">
   {chargementSession ? (
@@ -2152,21 +2726,277 @@ return (
 
   <h3>🥞 Produits vendus</h3>
 
-  {produitsVendusHistorique.length === 0 ? (
+<div className="camembert-produits-historique">
+  <h3>🥧 Répartition des produits vendus</h3>
+
+  {totalProduitsVendus === 0 ? (
     <p>Aucun produit vendu</p>
   ) : (
-    produitsVendusHistorique.map(
-      ([nom, quantite]) => (
-        <div
-          className="ligne-produit-vendu"
-          key={nom}
-        >
-          <span>{nom}</span>
-          <strong>×{quantite}</strong>
-        </div>
+<div className="contenu-camembert">
+
+  <div className="legende-camembert">
+    {repartitionProduitsCamembert.map((produit) => (
+      <div className="ligne-legende-camembert" key={produit.nom}>
+
+        <span
+          className="couleur-legende-camembert"
+          style={{ backgroundColor: produit.couleur }}
+        />
+
+        <span className="nom-legende-camembert">
+          {produit.nom}
+        </span>
+
+        <strong className="quantite-legende-camembert">
+          ×{produit.quantite}
+        </strong>
+
+        <strong className="pourcentage-legende-camembert">
+          {produit.pourcentage.toFixed(1)} %
+        </strong>
+
+      </div>
+    ))}
+  </div>
+
+  <svg viewBox="0 0 200 200" className="graphique-camembert">
+    {repartitionProduitsCamembert.map((produit) => {
+      const angleDebut = produit.debut * 3.6 - 90
+      const angleFin = produit.fin * 3.6 - 90
+
+      const x1 = 100 + 90 * Math.cos(angleDebut * Math.PI / 180)
+      const y1 = 100 + 90 * Math.sin(angleDebut * Math.PI / 180)
+
+      const x2 = 100 + 90 * Math.cos(angleFin * Math.PI / 180)
+      const y2 = 100 + 90 * Math.sin(angleFin * Math.PI / 180)
+
+      const grandArc = produit.pourcentage > 50 ? 1 : 0
+
+      if (produit.pourcentage >= 99.99) {
+        return (
+          <circle
+            key={produit.nom}
+            cx="100"
+            cy="100"
+            r="90"
+            fill={produit.couleur}
+          />
+        )
+      }
+
+      return (
+        <path
+          key={produit.nom}
+          d={`M 100 100 L ${x1} ${y1} A 90 90 0 ${grandArc} 1 ${x2} ${y2} Z`}
+          fill={produit.couleur}
+          stroke="white"
+          strokeWidth="1.5"
+        />
       )
-    )
+    })}
+  </svg>
+
+</div>
   )}
+</div>
+
+</div>
+
+{/* Graphiques horaires */}
+
+<div className="graphiques-horaires">
+<div className="graphique-horaire">
+  <h3>🧾 Commandes par heure</h3>
+
+  {statistiquesHoraires.length === 0 ? (
+    <p>Aucune donnée disponible</p>
+  ) : (
+    <>
+
+<div
+  className="conteneur-vues-horaires"
+  onScroll={(e) =>
+    setVueHoraireActive(
+      e.currentTarget.scrollLeft >= e.currentTarget.clientWidth / 2 ? 1 : 0
+    )
+  }
+>
+  <div className="vue-horaire-slide">
+
+      {/* Vue simplifiée */}
+      <div className="vue-simple-horaire">
+        {statistiquesHoraires
+          .filter(stat => stat.nombreCommandes > 0)
+          .map(stat => (
+            <div className="barre-horaire" key={stat.heure}>
+              <span className="heure-horaire">
+                {`${String(Math.floor(stat.heure / 60)).padStart(2, '0')}h${String(stat.heure % 60).padStart(2, '0')}`}
+              </span>
+
+              <div className="fond-barre-horaire">
+                <div
+                  className="remplissage-barre-horaire commandes"
+                  style={{
+                    width: `${
+                      stat.nombreCommandes /
+                      Math.max(...statistiquesHoraires.map(s => s.nombreCommandes)) *
+                      100
+                    }%`,
+                  }}
+                />
+              </div>
+
+              <strong>{stat.nombreCommandes}</strong>
+            </div>
+          ))}
+      </div>
+  </div>
+
+  <div className="vue-horaire-slide">
+         {/* Vue détaillée */}
+      <div className="courbe-horaire">
+        <svg viewBox="0 0 600 280" className="graphique-svg">
+          <line x1="50" y1="20" x2="50" y2="230" className="axe-graphique" />
+          <line x1="50" y1="230" x2="580" y2="230" className="axe-graphique" />
+
+          {Array.from({ length: 5 }, (_, i) => {
+            const maximum = Math.max(1, ...statistiquesQuartsHeure.map(s => s.nombreCommandes))
+            const valeur = Math.ceil(maximum * (4 - i) / 4)
+            const y = 230 - (valeur / maximum) * 200
+
+            return (
+              <g key={i}>
+                <line x1="50" y1={y} x2="580" y2={y} className="grille-graphique" />
+                <text x="40" y={y + 4} textAnchor="end" className="texte-graphique">
+                  {valeur}
+                </text>
+              </g>
+            )
+          })}
+
+          <polyline
+            fill="none"
+            className="ligne-commandes"
+            points={statistiquesQuartsHeure.map((stat, i) => {
+              const x = 50 + (i / Math.max(1, statistiquesQuartsHeure.length - 1)) * 530
+              const maximum = Math.max(1, ...statistiquesQuartsHeure.map(s => s.nombreCommandes))
+              const y = 230 - (stat.nombreCommandes / maximum) * 200
+              return `${x},${y}`
+            }).join(' ')}
+          />
+
+          {statistiquesQuartsHeure.map((stat, i) => {
+            const x = 50 + (i / Math.max(1, statistiquesQuartsHeure.length - 1)) * 530
+            const maximum = Math.max(1, ...statistiquesQuartsHeure.map(s => s.nombreCommandes))
+            const y = 230 - (stat.nombreCommandes / maximum) * 200
+
+            return (
+              <g key={stat.heure}>
+                <circle cx={x} cy={y} r="5" className="point-commandes">
+                  <title>
+                    {`${String(Math.floor(stat.heure / 60)).padStart(2, '0')}h${String(stat.heure % 60).padStart(2, '0')} : ${stat.nombreCommandes} commande(s)`}
+                  </title>
+                </circle>
+
+                {stat.heure % 60 === 0 && (
+                  <text x={x} y="250" textAnchor="middle" className="texte-graphique">
+                    {`${String(Math.floor(stat.heure / 60)).padStart(2, '0')}h`}
+                  </text>
+                )}
+
+                <text x={x} y={y - 12} textAnchor="middle" className="valeur-graphique">
+                  {stat.nombreCommandes}
+                </text>
+              </g>
+            )
+          })}
+                </svg>
+            </div>
+    </div>
+  </div>
+
+  <div className="indicateurs-vues-horaires">
+    <span className={vueHoraireActive === 0 ? 'actif' : ''}></span>
+    <span className={vueHoraireActive === 1 ? 'actif' : ''}></span>
+  </div>
+
+  </>
+  )}
+</div>
+
+<div className="graphique-horaire">
+  <h3>💰 Chiffre d'affaires par heure</h3>
+
+  {statistiquesHoraires.length === 0 ? (
+    <p>Aucune donnée disponible</p>
+  ) : (
+    <div className="courbe-horaire">
+      <svg viewBox="0 0 600 280" className="graphique-svg">
+        <line x1="50" y1="20" x2="50" y2="230" className="axe-graphique" />
+        <line x1="50" y1="230" x2="580" y2="230" className="axe-graphique" />
+
+        {Array.from({ length: 5 }, (_, i) => {
+          const maximum = Math.max(
+            1,
+            ...statistiquesHoraires.map(s => s.chiffreAffaires)
+          )
+          const valeur = maximum * (4 - i) / 4
+          const y = 230 - (valeur / maximum) * 200
+
+          return (
+            <g key={i}>
+              <line x1="50" y1={y} x2="580" y2={y} className="grille-graphique" />
+              <text x="40" y={y + 4} textAnchor="end" className="texte-graphique">
+                {valeur.toFixed(0)} $
+              </text>
+            </g>
+          )
+        })}
+
+        <polyline
+          fill="none"
+          className="ligne-chiffre-affaires"
+          points={statistiquesHoraires.map((stat, i) => {
+            const x = 50 + (i / Math.max(1, statistiquesHoraires.length - 1)) * 530
+            const maximum = Math.max(1, ...statistiquesHoraires.map(s => s.chiffreAffaires))
+            const y = 230 - (stat.chiffreAffaires / maximum) * 200
+            return `${x},${y}`
+          }).join(' ')}
+        />
+
+        {statistiquesHoraires.map((stat, i) => {
+          const x = 50 + (i / Math.max(1, statistiquesHoraires.length - 1)) * 530
+          const maximum = Math.max(1, ...statistiquesHoraires.map(s => s.chiffreAffaires))
+          const y = 230 - (stat.chiffreAffaires / maximum) * 200
+
+          return (
+            <g key={stat.heure}>
+              <circle
+  cx={x}
+  cy={y}
+  r="8"
+  className="point-chiffre-affaires"
+  style={{ cursor: 'pointer' }}
+>
+  <title>
+    {`${String(Math.floor(stat.heure / 60)).padStart(2, '0')}h${String(stat.heure % 60).padStart(2, '0')} : ${stat.chiffreAffaires.toFixed(2)} $`}
+  </title>
+</circle>
+              {stat.heure % 60 === 0 && (
+  <text x={x} y="250" textAnchor="middle" className="texte-graphique">
+    {`${String(Math.floor(stat.heure / 60)).padStart(2, '0')}h`}
+  </text>
+)}
+              <text x={x} y={y - 12} textAnchor="middle" className="valeur-graphique">
+                {stat.chiffreAffaires.toFixed(0)} $
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+    </div>
+  )}
+</div>
 
 </div>
 
@@ -2260,15 +3090,18 @@ return (
 
             <div className="pied-commande-historique">
 
-              <span>
-                {commande.modePaiement}
-              </span>
+  <span>
+    {Number(commande.montantCarte ?? 0) > 0 &&
+    Number(commande.montantEspeces ?? 0) > 0
+      ? `Espèces : ${Number(commande.montantEspeces).toFixed(2)} $ | Carte : ${Number(commande.montantCarte).toFixed(2)} $`
+      : commande.modePaiement}
+  </span>
 
-              <span>
-                Total : {Number(commande.total).toFixed(2)} $
-              </span>
+  <span>
+    Total : {Number(commande.total).toFixed(2)} $
+  </span>
 
-            </div>
+</div>
 
           </div>
         ))}
@@ -2361,9 +3194,16 @@ return (
   className="carte-historique"
   key={ancienEvenement.id}
   onClick={() => {
-    setEvenementSelectionne(ancienEvenement)
-    setVueHistorique('statistiques')
-  }}
+  console.log(
+    'EVENEMENT CLIQUE :',
+    ancienEvenement.nom,
+    ancienEvenement.commandes?.length,
+    ancienEvenement.commandes?.[0]?.created_at
+  )
+
+  setEvenementSelectionne(ancienEvenement)
+  setVueHistorique('statistiques')
+}}
 >
 
                     <div className="infos-historique">
@@ -2526,6 +3366,20 @@ onClick={() => {
 </button>
 <button
   type="button"
+  className="bouton-accueil analyse"
+  onClick={() => {
+    setAnalyse(true)
+    localStorage.setItem('pageActuelle', 'analyse')
+    setAccueil(false)
+    setHistorique(false)
+    setAdmin(false)
+    setCuisine(false)
+  }}
+>
+  📊 Analyse
+</button>
+<button
+  type="button"
   className="bouton-accueil administration formulaire-administration"
   onClick={() => {
     setAdmin(true)
@@ -2666,6 +3520,23 @@ onClick={() => {
 >
   📚 Historique
 </button>
+
+<button
+  type="button"
+  className="bouton-accueil analyse"
+  onClick={() => {
+    setAnalyse(true)
+    localStorage.setItem('pageActuelle', 'analyse')
+    setAccueil(false)
+    setCreationEvenement(false)
+    setHistorique(false)
+    setAdmin(false)
+    setCuisine(false)
+  }}
+>
+  📊 Analyse
+</button>
+
          <button
   type="button"
   className="bouton-accueil administration"
@@ -2693,7 +3564,7 @@ onClick={() => {
 ) : (
 
       <>
-{!admin && (
+{!admin && !analyse && (
   <header>
 
     <div className="navigation-principale">
@@ -2763,24 +3634,404 @@ onClick={() => {
     </div>
   </header>
 )}
-        {admin ? (
-          <Admin
-  produits={menu}
-  ajouterProduit={ajouterNouveauProduit}
-  modifierProduit={modifierProduit}
-  supprimerProduit={supprimerProduitDuMenu}
-  reordonnerProduits={reordonnerProduits}
-  basculerVisibiliteProduit={basculerVisibiliteProduit}
-  supplements={supplements}
-  ajouterSupplement={ajouterSupplement}
-  modifierSupplement={modifierSupplement}
-  supprimerSupplement={supprimerSupplement}
-  retourAccueil={() => {
-    setAdmin(false)
-    setAccueil(true)
-    setCreationEvenement(true)
-  }}
-/>
+
+{analyse ? (
+  <div className="page-analyse">
+
+    <div className="titre-historique">
+      <button
+        type="button"
+        className="retour-accueil-historique"
+        onClick={() => {
+          setAnalyse(false)
+          setAccueil(true)
+        }}
+      >
+        ⬅️
+      </button>
+
+      <h1>📊 Analyse globale</h1>
+    </div>
+
+    <div className="periodes-analyse">
+
+  <button
+    type="button"
+    className={periodeAnalyse === 'semaine' ? 'active' : ''}
+    onClick={() => setPeriodeAnalyse('semaine')}
+  >
+    Semaine
+  </button>
+
+  <button
+    type="button"
+    className={periodeAnalyse === 'mois' ? 'active' : ''}
+    onClick={() => setPeriodeAnalyse('mois')}
+  >
+    Mois
+  </button>
+
+  <button
+    type="button"
+    className={periodeAnalyse === 'annee' ? 'active' : ''}
+    onClick={() => setPeriodeAnalyse('annee')}
+  >
+    Année
+  </button>
+
+</div>
+
+<div className="indicateurs-analyse">
+
+  <div className="carte-indicateur-analyse">
+    <span>💰 Chiffre d'affaires</span>
+    <strong>{chiffreAffairesAnalyse.toFixed(2)} $</strong>
+    <small className={
+  evolutionCAAnalyse >= 0 ? 'evolution-positive' : 'evolution-negative'
+}>
+  {evolutionCAAnalyse >= 0 ? '▲' : '▼'}
+  {' '}{Math.abs(evolutionCAAnalyse).toFixed(1)} %
+  {' '}vs période précédente
+</small>
+  </div>
+
+  <div className="carte-indicateur-analyse">
+    <span>🧾 Commandes</span>
+    <strong>{nombreCommandesAnalyse}</strong>
+    <small className={
+  evolutionCommandesAnalyse >= 0
+    ? 'evolution-positive'
+    : 'evolution-negative'
+}>
+  {evolutionCommandesAnalyse >= 0 ? '▲' : '▼'}
+  {' '}{Math.abs(evolutionCommandesAnalyse).toFixed(1)} %
+  {' '}vs période précédente
+</small>
+  </div>
+
+  <div className="carte-indicateur-analyse">
+    <span>🛒 Panier moyen</span>
+    <strong>{panierMoyenAnalyse.toFixed(2)} $</strong>
+    <small className={
+  evolutionPanierAnalyse >= 0
+    ? 'evolution-positive'
+    : 'evolution-negative'
+}>
+  {evolutionPanierAnalyse >= 0 ? '▲' : '▼'}
+  {' '}{Math.abs(evolutionPanierAnalyse).toFixed(1)} %
+  {' '}vs période précédente
+</small>
+  </div>
+
+  <div className="carte-indicateur-analyse">
+    <span>🥞 Produits vendus</span>
+    <strong>{quantiteProduitsAnalyse}</strong>
+  </div>
+
+</div>
+<div className="top-produits-analyse">
+
+  <h2>🏆 Top 5 des produits</h2>
+
+  {classementProduitsAnalyse.length === 0 ? (
+    <p>Aucune vente sur cette période.</p>
+  ) : (
+    <div className="liste-top-produits">
+
+      {classementProduitsAnalyse.map((produit, index) => (
+        <div
+          className="ligne-top-produit"
+          key={produit.nom}
+        >
+          <span>{index + 1}.</span>
+          <strong>{produit.nom}</strong>
+          <span>{produit.quantite} vendus</span>
+        </div>
+      ))}
+
+    </div>
+  )}
+
+</div>
+<div className="paiements-analyse">
+
+  <h2>💳 Répartition des paiements</h2>
+
+  <div>
+    <span>Carte</span>
+    <strong>{chiffreAffairesCarteAnalyse.toFixed(2)} $</strong>
+  </div>
+
+  <div>
+    <span>Espèces</span>
+    <strong>{chiffreAffairesEspecesAnalyse.toFixed(2)} $</strong>
+  </div>
+
+</div>
+<div className="commandes-jour-analyse">
+
+  <h2>
+  📅 Commandes {periodeAnalyse === 'semaine'
+    ? 'par jour'
+    : periodeAnalyse === 'mois'
+      ? 'par semaine'
+      : 'par mois'}
+</h2>
+
+  {commandesParJourAnalyse.length === 0 ? (
+    <p>Aucune commande sur cette période.</p>
+  ) : (
+    <div className="liste-commandes-jour">
+
+      {(
+  periodeAnalyse === 'annee'
+    ? graphiqueCAAfficheAnalyse
+    : periodeAnalyse === 'mois'
+      ? graphiqueCAAnalyse
+      : commandesParJourAnalyse
+).map(jour => {
+  const date = new Date(
+    (periodeAnalyse === 'semaine' ? jour.date : jour.periode) +
+    'T12:00:00'
+  )
+
+  const libelle =
+    periodeAnalyse === 'annee'
+      ? date.toLocaleDateString('fr-FR', { month: 'long' })
+      : periodeAnalyse === 'mois'
+        ? (() => {
+            const fin = new Date(date)
+            fin.setDate(fin.getDate() + 6)
+
+            const format = d =>
+              d.toLocaleDateString('fr-FR', {
+                day: '2-digit',
+                month: '2-digit',
+              })
+
+            return `${format(date)} – ${format(fin)}`
+          })()
+        : date.toLocaleDateString('fr-FR', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+          })
+
+  return (
+    <div
+      className="ligne-commandes-jour"
+      key={periodeAnalyse === 'semaine' ? jour.date : jour.periode}
+    >
+      <strong>{libelle}</strong>
+
+      <span>
+        {periodeAnalyse === 'semaine'
+          ? jour.nombreCommandes
+          : commandesPeriodeAnalyse.filter(commande => {
+              const d = new Date(commande.created_at)
+
+              if (periodeAnalyse === 'annee') {
+                return (
+                  d.getFullYear() === date.getFullYear() &&
+                  d.getMonth() === date.getMonth()
+                )
+              }
+
+              const fin = new Date(date)
+              fin.setDate(fin.getDate() + 7)
+
+              return d >= date && d < fin
+            }).length
+        } commandes
+      </span>
+    </div>
+  )
+})}
+
+    </div>
+  )}
+
+</div>
+<div className="panier-jour-analyse">
+
+  <h2>
+  🛒 Panier moyen {periodeAnalyse === 'semaine'
+    ? 'par jour'
+    : periodeAnalyse === 'mois'
+      ? 'par semaine'
+      : 'par mois'}
+</h2>
+
+  {panierMoyenParJourAnalyse.length === 0 ? (
+    <p>Aucune donnée disponible.</p>
+  ) : (
+    <div className="liste-panier-jour">
+
+      {(
+  periodeAnalyse === 'semaine'
+    ? panierMoyenParJourAnalyse
+    : graphiqueCAAfficheAnalyse.map(jour => {
+        const date = new Date(jour.periode + 'T12:00:00')
+
+        const commandesCorrespondantes =
+          commandesPeriodeAnalyse.filter(commande => {
+            const d = new Date(commande.created_at)
+
+            if (periodeAnalyse === 'annee') {
+              return (
+                d.getFullYear() === date.getFullYear() &&
+                d.getMonth() === date.getMonth()
+              )
+            }
+
+            const fin = new Date(date)
+            fin.setDate(fin.getDate() + 7)
+
+            return d >= date && d < fin
+          })
+
+        const chiffreAffaires = commandesCorrespondantes.reduce(
+          (total, commande) => total + Number(commande.total || 0),
+          0
+        )
+
+        return {
+          ...jour,
+          panierMoyen:
+            commandesCorrespondantes.length > 0
+              ? chiffreAffaires / commandesCorrespondantes.length
+              : 0,
+        }
+      })
+).map(jour => {
+  const date = new Date(
+    (periodeAnalyse === 'semaine' ? jour.date : jour.periode) +
+    'T12:00:00'
+  )
+
+  const libelle =
+    periodeAnalyse === 'annee'
+      ? date.toLocaleDateString('fr-FR', { month: 'long' })
+      : periodeAnalyse === 'mois'
+        ? (() => {
+            const fin = new Date(date)
+            fin.setDate(fin.getDate() + 6)
+
+            const format = d =>
+              d.toLocaleDateString('fr-FR', {
+                day: '2-digit',
+                month: '2-digit',
+              })
+
+            return `${format(date)} – ${format(fin)}`
+          })()
+        : date.toLocaleDateString('fr-FR', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+          })
+
+  return (
+    <div
+      className="ligne-panier-jour"
+      key={periodeAnalyse === 'semaine' ? jour.date : jour.periode}
+    >
+      <strong>{libelle}</strong>
+      <span>{jour.panierMoyen.toFixed(2)} $</span>
+    </div>
+  )
+})}
+
+    </div>
+  )}
+
+</div>
+<div className="graphique-ca-analyse">
+
+  <h2>
+  📈 Chiffre d'affaires {periodeAnalyse === 'semaine'
+    ? 'par jour'
+    : periodeAnalyse === 'mois'
+      ? 'par semaine'
+      : 'par mois'}
+</h2>
+
+  {graphiqueCAAnalyse.length === 0 ? (
+    <p>Aucune donnée disponible.</p>
+  ) : (
+    <div className="liste-graphique-ca">
+
+      
+{graphiqueCAAfficheAnalyse.map(jour => {
+  const libelle = periodeAnalyse === 'annee'
+    ? new Date(jour.periode + '-01T12:00:00')
+        .toLocaleDateString('fr-FR', { month: 'long' })
+    : periodeAnalyse === 'mois'
+      ? (() => {
+          const debut = new Date(jour.periode + 'T12:00:00')
+          const fin = new Date(debut)
+          fin.setDate(fin.getDate() + 6)
+          const format = date =>
+            date.toLocaleDateString('fr-FR', {
+              day: '2-digit',
+              month: '2-digit',
+            })
+          return `${format(debut)} – ${format(fin)}`
+        })()
+      : new Date(jour.periode + 'T12:00:00')
+          .toLocaleDateString('fr-FR', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+          })
+
+  const maximum = Math.max(
+    ...graphiqueCAAnalyse.map(item => item.chiffreAffaires),
+    1
+  )
+
+  return (
+    <div className="ligne-graphique-ca" key={jour.periode}>
+      <div className="entete-barre-ca">
+        <span>{libelle}</span>
+        <strong>{jour.chiffreAffaires.toFixed(2)} $</strong>
+      </div>
+
+      <div className="barre-ca-fond">
+        <div
+          className="barre-ca-remplissage"
+          style={{
+            width: `${jour.chiffreAffaires / maximum * 100}%`,
+          }}
+        />
+      </div>
+    </div>
+  )
+})}
+
+    </div>
+  )}
+
+</div>
+  </div>
+) : admin ? (
+  <Admin
+    produits={menu}
+    ajouterProduit={ajouterNouveauProduit}
+    modifierProduit={modifierProduit}
+    supprimerProduit={supprimerProduitDuMenu}
+    reordonnerProduits={reordonnerProduits}
+    basculerVisibiliteProduit={basculerVisibiliteProduit}
+    supplements={supplements}
+    ajouterSupplement={ajouterSupplement}
+    modifierSupplement={modifierSupplement}
+    supprimerSupplement={supprimerSupplement}
+    retourAccueil={() => {
+      setAdmin(false)
+      setAccueil(true)
+      setCreationEvenement(true)
+    }}
+  />
 ) : cuisine ? (
   <Cuisine
   commandes={commandesEvenement}
@@ -2817,7 +4068,7 @@ onClick={() => {
     ) : (
       <div className="liste-commandes-historique">
 
-        {commandesEvenement.map((commande) => (
+        {[...commandesEvenement].reverse().map((commande) => (
           <div
             className="carte-commande-historique"
             key={commande.id}
@@ -2936,15 +4187,18 @@ onClick={() => {
 
             <div className="pied-commande-historique">
 
-              <span>
-                {commande.modePaiement}
-              </span>
+  <span>
+    {Number(commande.montantCarte ?? 0) > 0 &&
+    Number(commande.montantEspeces ?? 0) > 0
+      ? `Espèces : ${Number(commande.montantEspeces).toFixed(2)} $ | Carte : ${Number(commande.montantCarte).toFixed(2)} $`
+      : commande.modePaiement}
+  </span>
 
-              <span>
-                Total : {Number(commande.total).toFixed(2)} $
-              </span>
+  <span>
+    Total : {Number(commande.total).toFixed(2)} $
+  </span>
 
-            </div>
+</div>
 
           </div>
         ))}
@@ -3008,7 +4262,7 @@ onClick={() => {
           backgroundColor:
             produit.couleur || '#F6D6DC',
           color:
-            ['#2d2d2d', '#8B5A3C', '#a3612f', '#d0863bc5'].includes(
+            ['#2d2d2d', '#6c442b', '#a3612f', '#d0863bc5'].includes(
               produit.couleur
             )
               ? '#FFFFFF'
@@ -3411,163 +4665,164 @@ setHistoriqueCommandesActif(false)
 
             </aside>
 
-            {paiement && (
+{paiement && (
 
-              <div className="paiement-overlay">
+  <div className="paiement-overlay">
 
-                <div className="paiement">
+    <div className="paiement">
 
-                  <h2 className="titre-paiement">
-  <span className="emoji-paiement">💳</span>
-  <span>Paiement</span>
-</h2>
+      <h2 className="titre-paiement">
+        <span className="emoji-paiement">💳</span>
+        <span>Paiement</span>
+      </h2>
 
-                  <p>Total à payer</p>
+      <p>Total à payer</p>
 
-                  <div className="montant-paiement">
-                    {total.toFixed(2)} $
-                  </div>
+      <div className="montant-paiement">
+        {total.toFixed(2)} $
+      </div>
 
-                  <div className="modes-paiement">
+      <div className="modes-paiement">
 
-                    <button
-                      className={
-                        modePaiement === 'Carte'
-                          ? 'active'
-                          : ''
-                      }
-                      onClick={() =>
-                        setModePaiement('Carte')
-                      }
-                    >
-                      💳 Carte
-                    </button>
+        <button
+          className={
+            modePaiement === 'Carte'
+              ? 'active'
+              : ''
+          }
+          onClick={() => {
+            setModePaiement('Carte')
+            setCompleterEnCarte(false)
+          }}
+        >
+          💳 Carte
+        </button>
 
-                    <button
-                      className={
-                        modePaiement === 'Espèces'
-                          ? 'active'
-                          : ''
-                      }
-                      onClick={() =>
-                        setModePaiement('Espèces')
-                      }
-                    >
-                      💵 Espèces
-                    </button>
+        <button
+          className={
+            modePaiement === 'Espèces'
+              ? 'active'
+              : ''
+          }
+          onClick={() => setModePaiement('Espèces')}
+        >
+          💵 Espèces
+        </button>
 
-                  </div>
+      </div>
 
-                  {modePaiement === 'Espèces' && (
+      {modePaiement === 'Espèces' && (
 
-                    <div className="especes">
+        <div className="especes">
 
-                      <label>
-                        Montant reçu
-                      </label>
+          <label>
+            Montant reçu
+          </label>
 
- <input
-  type="number"
-  inputMode="decimal"
-  step="0.10"
-  min={total}
-  value={montantRecu}
-  onChange={(e) =>
-    setMontantRecu(e.target.value)
-  }
-  placeholder="0.00"
-/>
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.10"
+            min={completerEnCarte ? 0 : total}
+            max={completerEnCarte ? total : undefined}
+            value={montantRecu}
+            onChange={(e) =>
+              setMontantRecu(e.target.value)
+            }
+            placeholder="0.00"
+          />
 
-<button
-  type="button"
-  className="montant-exact"
-  onClick={() =>
-    setMontantRecu(total.toFixed(2))
-  }
->
-  ⚡ Montant exact
-</button>
+          <button
+            type="button"
+            className="montant-exact"
+            onClick={() =>
+              setMontantRecu(total.toFixed(2))
+            }
+          >
+            ⚡ Montant exact
+          </button>
 
-                      {Number(montantRecu) >= total && (
+          <button
+            type="button"
+            className={`montant-exact ${completerEnCarte ? 'active' : ''}`}
+            onClick={() =>
+              setCompleterEnCarte(!completerEnCarte)
+            }
+          >
+            💳 Compléter en carte
+          </button>
 
-                        <p>
-                          Monnaie à rendre :
-                          <strong>
-                            {' '}
-                            {(
-                              Number(montantRecu) -
-                              total
-                            ).toFixed(2)} $
-                          </strong>
-                        </p>
+          {completerEnCarte && (
+            <p>
+              Reste à payer par carte :
+              <strong>
+                {' '}
+                {Math.max(
+                  0,
+                  total - Math.max(0, Number(montantRecu) || 0)
+                ).toFixed(2)} $
+              </strong>
+            </p>
+          )}
 
-                      )}
+          {!completerEnCarte && Number(montantRecu) >= total && (
 
-                    </div>
+            <p>
+              Monnaie à rendre :
+              <strong>
+                {' '}
+                {(
+                  Number(montantRecu) - total
+                ).toFixed(2)} $
+              </strong>
+            </p>
 
-                  )}
+          )}
 
-{modePaiement && (
-  <button
-    className="confirmer-paiement"
-    onClick={enregistrerPaiement}
-    disabled={
-      paiementEnregistrement ||
-      (modePaiement === 'Espèces' &&
-        Number(montantRecu) < total)
-    }
-  >
-    {paiementEnregistrement
-      ? '⏳ Enregistrement...'
-      : '✅ Enregistrer le paiement'}
-  </button>
+        </div>
+
+      )}
+
+      {modePaiement && (
+        <button
+          className="confirmer-paiement"
+          onClick={enregistrerPaiement}
+          disabled={
+            paiementEnregistrement ||
+            (modePaiement === 'Espèces' &&
+              !completerEnCarte &&
+              Number(montantRecu) < total)
+          }
+        >
+          {paiementEnregistrement
+            ? '⏳ Enregistrement...'
+            : '✅ Enregistrer le paiement'}
+        </button>
+      )}
+
+      <button
+        className="annuler-paiement"
+        onClick={() => {
+          setPaiement(false)
+          setModePaiement('')
+          setMontantRecu('')
+          setCompleterEnCarte(false)
+        }}
+      >
+        Annuler
+      </button>
+
+    </div>
+
+  </div>
 )}
 
-                  <button
-                    className="annuler-paiement"
-                    onClick={() => {
-                      setPaiement(false)
-                      setModePaiement('')
-                      setMontantRecu('')
-                    }}
-                  >
-                    Annuler
-                  </button>
-
-                </div>
-
-              </div>
-
-            )}
-
-          </main>
-
-        )}
-
-      </>
-    )}
-
-
-     {produitPersonnalise && (
-      <PersonnaliserProduits
-        produit={produitPersonnalise}
-        supplements={
-          produitPersonnalise.categorie === 'Sweet'
-            ? supplements.Sweet
-            : supplements.Savoury
-        }
-        fermer={() =>
-          setProduitPersonnalise(null)
-        }
-        ajouterCommande={(produit) => {
-          ajouterProduit(produit)
-          setProduitPersonnalise(null)
-        }}
-      />
-    )}
-
+</main>
+          )}
+        </>
+      )}
     </>
-    )}
+  )}
   </div>
   )
 }
