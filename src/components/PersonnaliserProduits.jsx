@@ -78,6 +78,7 @@ function PersonnaliserProduits({
     }
 
     ajouterCommande(produitPersonnalise)
+    fermer()
   }
 
   return (

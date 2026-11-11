@@ -4664,6 +4664,18 @@ setHistoriqueCommandesActif(false)
 </button>
 
             </aside>
+{produitPersonnalise && (
+  <PersonnaliserProduits
+    produit={produitPersonnalise}
+    supplements={
+  produitPersonnalise.categorie === 'Sweet'
+    ? supplements.Sweet
+    : supplements.Savoury
+}
+    fermer={() => setProduitPersonnalise(null)}
+    ajouterCommande={ajouterProduit}
+  />
+)}
 
 {paiement && (
 
